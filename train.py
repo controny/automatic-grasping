@@ -5,6 +5,11 @@ import model
 LOG_DIR = '../log/'
 PRETRAINED_MODEL_PATH = '../pretrained_model/vgg_16.ckpt'
 
+image_size = 224
+channel_num = 3
+label_size = 18
+batch_size = 100
+
 
 def add_summary_op(summary_ops, tensor, message):
     op = tf.summary.scalar(message, tensor)
@@ -12,9 +17,12 @@ def add_summary_op(summary_ops, tensor, message):
     summary_ops.append(op)
 
 
-def main():
-    images = tf.ones([1, 224, 224, 3])
-    labels = tf.ones([1, 18])
+def train():
+    """Main training function to set out training."""
+
+    # Testing constants
+    images = tf.ones([batch_size, image_size, image_size, channel_num])
+    labels = tf.ones([batch_size, label_size])
 
     # Create the summary ops such that they also print out to std output:
     summary_ops = []
@@ -24,8 +32,9 @@ def main():
     add_summary_op(summary_ops, tf.reduce_mean(predictions), 'prediction: ')
 
     # Define the loss functions and get the total loss
-    slim.losses.softmax_cross_entropy(predictions, labels)
-    total_loss = slim.losses.get_total_loss()
+    loss = model.custom_loss_function(predictions, labels)
+    tf.losses.add_loss(loss)
+    total_loss = tf.losses.get_total_loss()
     add_summary_op(summary_ops, total_loss, 'loss')
 
     # Set optimizer
@@ -34,7 +43,7 @@ def main():
 
     # create_train_op ensures that each time we ask for the loss, the update_ops
     # are run and the gradients being computed are applied too
-    train_op = slim.learning.create_train_op(total_loss, optimizer)
+    train_op = tf.train.get_or_create_global_step()
 
     # Where checkpoints are stored
     if not tf.gfile.Exists(LOG_DIR):
@@ -51,10 +60,10 @@ def main():
         LOG_DIR,
         init_fn=init_fn,
         summary_op=tf.summary.merge(summary_ops),
-        number_of_steps=1000,
+        number_of_steps=10,
         save_summaries_secs=1,
         save_interval_secs=1)
 
 
 if __name__ == '__main__':
-    main()
+    train()
