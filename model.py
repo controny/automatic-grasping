@@ -3,23 +3,21 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.slim.nets as nets
 from tensorflow.python.ops import variable_scope
-from train import add_summary_op
 
 
 vgg = nets.vgg
 
 
-def grasp_net(images, summary_ops):
+def grasp_net(images):
     """
     A net taking advantage of pretrained VGG16.
 
     :param images: size of 224x224
-    :param summary_ops: summary collections
     :return: logits with shape of [batch_size, 18]
     """
 
     vgg_output, _ = vgg.vgg_16(images, is_training=True)
-    add_summary_op(summary_ops, tf.reduce_mean(vgg_output), 'vgg_output')
+    tf.summary.scalar('vgg_output', tf.reduce_mean(vgg_output))
 
     # Add extra layers to the end of VGG16
     with variable_scope.variable_scope('extra_layers'):
