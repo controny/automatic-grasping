@@ -27,21 +27,6 @@ def grasp_net(images):
     return net
 
 
-def cross_entropy(label, logit):
-    """
-    Calculate cross entropy.
-
-    :param label: ground truth
-    :param logit: prediction
-    :return: cross entropy
-    """
-    # In order to avoid causing loss to NaN
-    clip_min = 1e-7
-    clip_max = 1e7
-    return -label * tf.log(tf.clip_by_value(logit, clip_min, clip_max))\
-           - (1-label) * tf.log(tf.clip_by_value(1-logit, clip_min, clip_max))
-
-
 def custom_loss_function(logits, labels):
     """
     Custom loss function according to the paper.
@@ -50,9 +35,16 @@ def custom_loss_function(logits, labels):
     :param labels: denoted by one-hot vector
     :return: reduce sum of loss for a batch
     """
-    loss = 0.0
-    for i in range(logits.shape[0]):
-        index = tf.argmax(labels[i])
-        loss += cross_entropy(labels[i][index], logits[i][index])
+    # Get the inner product of two
+    inner_product = logits * labels
+    # Get the indices of non-zero value
+    zero = tf.constant(0, dtype=tf.float32)
+    indices = tf.where(tf.not_equal(inner_product, zero))
+    # Gather the non-zero values
+    non_zeros = tf.gather_nd(inner_product, indices)
+    # Calculate entropy elementwise
+    entropys = -tf.log(tf.clip_by_value(non_zeros, 1e-8, 1.0))
+    # Sum the entropy and get the final loss
+    loss = tf.reduce_sum(entropys)
 
     return loss

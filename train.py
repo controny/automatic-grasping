@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import model
+import time
 
 # File paths
 log_dir = '../log/'
@@ -14,7 +15,7 @@ label_size = 18
 # Training parameters
 batch_size = 100
 training_steps = 100
-log_step = 50
+log_step = 10
 initial_learning_rate = 0.0002
 learning_rate_decay_factor = 0.7
 decay_steps = 50    # Better to be calculate dynamically
@@ -43,9 +44,7 @@ def train():
             staircase=True)
 
         # Define the loss functions and get the total loss
-        # TODO
-        # loss = model.custom_loss_function(predictions, labels)
-        loss = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(labels, predictions))
+        loss = model.custom_loss_function(predictions, labels)
         tf.losses.add_loss(loss)
         total_loss = tf.losses.get_total_loss()
 
@@ -79,14 +78,16 @@ def train():
         # Run the managed session
         with sv.managed_session() as sess:
             for step in range(training_steps):
+                start_time = time.time()
                 total_loss, global_step_count = sess.run([train_op, global_step])
+                time_elapsed = time.time() - start_time
+                print('global step %s: loss: %.4f (%.2f sec/step)'
+                      % (global_step_count, total_loss, time_elapsed))
 
                 # Log the summaries every constant steps
                 if global_step_count % log_step == 0:
                     summaries = sess.run(summary_op)
                     sv.summary_computed(sess, summaries)
-                    # Output the log info by the way
-                    print('Global step %s: loss = %s' % (global_step_count, total_loss))
 
 
 if __name__ == '__main__':
