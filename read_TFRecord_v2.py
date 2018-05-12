@@ -28,6 +28,8 @@ def get_dataset(dataset_dir,
         for record in tf.python_io.tf_record_iterator(tfrecord_file):
             num_samples += 1
 
+    print('num_samples', num_samples)
+
     reader = tf.TFRecordReader
 
     keys_to_features = {
@@ -52,7 +54,7 @@ def get_dataset(dataset_dir,
         num_samples = num_samples,
         items_to_descriptions=None 
         )
-    
+
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
         num_readers = num_readers,
@@ -65,10 +67,12 @@ def get_dataset(dataset_dir,
     [image, class_label, theta_label] = provider.get(['image', 'class_label', 'theta_label'])
     #do a simple reshape to batch it up
     image = tf.expand_dims(image, 0)
-    image = tf.image.resize_bilinear(image, [image_size, image_size]) 
+    image = tf.image.resize_bilinear(image, [image_size, image_size])
     image = tf.squeeze(image)
     image = tf.image.convert_image_dtype(image, tf.float32)
     image -= [123.68, 116.779, 103.939]
+
+    image = tf.Print(image, [image.shape], 'image: ')
 
     if is_training:
         images, class_labels, theta_labels = tf.train.batch([image, class_label, theta_label],
@@ -93,6 +97,7 @@ def main():
                                                                 set = 'Train_positive',
                                                                 num_readers = num_readers,
                                                                 num_preprocessing_threads = num_preprocessing_threads)
+        tf.summary.image('positive images', images_p)
         images_n, class_labels_n, theta_labels_n = get_dataset(dataset_dir = FLAGS.source_dir,
                                                                 set = 'Train_negative',
                                                                 num_readers = num_readers,
@@ -100,6 +105,19 @@ def main():
         images = tf.concat([images_p, images_n], axis=0)
         class_labels = tf.concat([class_labels_p, class_labels_n], axis=0)
         theta_labels = tf.concat([theta_labels_p, theta_labels_n], axis=0)
+
+        summary_op = tf.summary.merge_all()
+        with tf.Session() as sess:
+            log_dir = './dataset_test/'
+            if not tf.gfile.Exists(log_dir):
+                tf.gfile.MakeDirs(log_dir)
+            writer = tf.summary.FileWriter(log_dir, sess.graph)
+            writer.add_graph(sess.graph)
+
+            tf.global_variables_initializer().run()
+            summary = sess.run(summary_op)
+            writer.add_summary(summary)
+        writer.close()
 
 if __name__ == '__main__':
     main()
