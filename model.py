@@ -27,24 +27,20 @@ def grasp_net(images):
     return net
 
 
-def custom_loss_function(logits, labels):
+def custom_loss_function(logits, thetas, labels):
     """
     Custom loss function according to the paper.
 
     :param logits: should be shape of [batch_size, 18]
-    :param labels: denoted by one-hot vector
+    :param thetas: each denoted by one-hot vector
+    :param labels: each denoted by 0 or 1
     :return: reduce sum of loss for a batch
     """
-    # Get the inner product of two
-    inner_product = logits * labels
-    # Get the indices of non-zero value
-    zero = tf.constant(0, dtype=tf.float32)
-    indices = tf.where(tf.not_equal(inner_product, zero))
-    # Gather the non-zero values
-    non_zeros = tf.gather_nd(inner_product, indices)
-    # Calculate entropy elementwise
-    entropys = -tf.log(tf.clip_by_value(non_zeros, 1e-8, 1.0))
-    # Sum the entropy and get the final loss
+    filtered_activation = tf.reduce_sum(logits*thetas, 1)
+    # Reshape the activation, such that it shares the shape with labels
+    filtered_activation = tf.reshape(filtered_activation, [-1, 1])
+    entropys = - labels * tf.log(tf.clip_by_value(filtered_activation, 1e-8, 1.0))\
+               - (1-labels) * tf.log(tf.clip_by_value((1-filtered_activation), 1e-8, 1.0))
     loss = tf.reduce_sum(entropys)
 
     return loss

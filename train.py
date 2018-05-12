@@ -10,7 +10,8 @@ pretrained_model_path = '../pretrained_model/vgg_16.ckpt'
 # Input setting
 image_size = 224
 channel_num = 3
-label_size = 18
+theta_size = 18
+label_size = 1
 
 # Training parameters
 batch_size = 100
@@ -27,6 +28,7 @@ def train():
     with tf.Graph().as_default():
         # Testing constants
         images = tf.ones([batch_size, image_size, image_size, channel_num])
+        thetas = tf.ones([batch_size, theta_size])
         labels = tf.ones([batch_size, label_size])
 
         # Create the model
@@ -44,7 +46,7 @@ def train():
             staircase=True)
 
         # Define the loss functions and get the total loss
-        loss = model.custom_loss_function(predictions, labels)
+        loss = model.custom_loss_function(predictions, thetas, labels)
         tf.losses.add_loss(loss)
         total_loss = tf.losses.get_total_loss()
 
