@@ -12,9 +12,6 @@ num_classes = 18
 num_readers = 2 #???
 num_preprocessing_threads = 2 #???
 
-'''
-num_epochs = 70
-'''
 def get_dataset(dataset_dir,
                 set,  
                 num_readers,
@@ -79,6 +76,7 @@ def get_dataset(dataset_dir,
                                                             batch_size = batch_size,
                                                             num_threads = num_preprocessing_threads,
                                                             capacity = 5 * batch_size)
+        pri
     else:
         images = tf.expand_dims(image,axis=0)
         class_labels = tf.expand_dims(class_label, axis=0)
