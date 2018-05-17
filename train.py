@@ -1,12 +1,10 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-import model
 import time
+import os
+import shutil
+import model
 import read_TFRecord
-
-# File paths
-log_dir = '../log/'
-pretrained_model_path = '../pretrained_model/vgg_16.ckpt'
 
 # Input setting
 image_size = 224
@@ -14,13 +12,22 @@ channel_num = 3
 theta_size = 18
 label_size = 1
 
+flags = tf.flags
+
+# File paths
+flags.DEFINE_string('log_dir', '../log/', 'log directory')
+flags.DEFINE_string('model_name', 'model', 'model name')
+flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 'pretrained mode path')
+
 # Training parameters
-batch_size = 100
-training_steps = 100
-log_step = 10
-initial_learning_rate = 0.0002
-learning_rate_decay_factor = 0.7
+flags.DEFINE_integer('batch_size', 100, 'batch size')
+flags.DEFINE_integer('training_steps', 100, 'training steps')
+flags.DEFINE_integer('logging_gap', 10, 'logging gap')
+flags.DEFINE_float('initial_learning_rate', 0.0001, 'initial learning rate')
+flags.DEFINE_float('learning_rate_decay_factor', 0.7, 'learning rate decay factor')
 decay_steps = 50    # Better to be calculate dynamically
+
+FLAGS = flags.FLAGS
 
 
 def train():
@@ -43,10 +50,10 @@ def train():
 
         # Define exponentially decaying learning rate
         learning_rate = tf.train.exponential_decay(
-            learning_rate=initial_learning_rate,
+            learning_rate=FLAGS.initial_learning_rate,
             global_step=global_step,
             decay_steps=decay_steps,
-            decay_rate=learning_rate_decay_factor,
+            decay_rate=FLAGS.learning_rate_decay_factor,
             staircase=True)
 
         # Define the loss functions and get the total loss
@@ -61,9 +68,12 @@ def train():
         # are run and the gradients being computed are applied too
         train_op = slim.learning.create_train_op(total_loss, optimizer)
 
-        # Where checkpoints are stored
-        if not tf.gfile.Exists(log_dir):
-            tf.gfile.MakeDirs(log_dir)
+        # Where model logs are stored
+        model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
+        # Make sure to overwrite the folder
+        if os.path.exists(model_log_dir):
+            shutil.rmtree(model_log_dir)
+        os.mkdir(model_log_dir)
 
         # Set summary
         tf.summary.scalar('prediction: ', tf.reduce_mean(predictions))
@@ -76,14 +86,14 @@ def train():
 
         def restore_fn(session):
             """A Saver function to later restore the model."""
-            return saver.restore(session, pretrained_model_path)
+            return saver.restore(session, FLAGS.pretrained_model_path)
 
         # Define a supervisor for running a managed session
-        sv = tf.train.Supervisor(logdir=log_dir, summary_op=None, init_fn=restore_fn)
+        sv = tf.train.Supervisor(logdir=model_log_dir, summary_op=None, init_fn=restore_fn)
 
         # Run the managed session
         with sv.managed_session() as sess:
-            for step in range(training_steps):
+            for step in range(FLAGS.training_steps):
                 start_time = time.time()
                 total_loss, global_step_count = sess.run([train_op, global_step])
                 time_elapsed = time.time() - start_time
@@ -91,7 +101,7 @@ def train():
                       % (global_step_count, total_loss, time_elapsed))
 
                 # Log the summaries every constant steps
-                if global_step_count % log_step == 0:
+                if global_step_count % FLAGS.logging_gap == 0:
                     summaries = sess.run(summary_op)
                     sv.summary_computed(sess, summaries)
 
