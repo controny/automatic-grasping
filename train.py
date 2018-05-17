@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import model
 import time
+import read_TFRecord
 
 # File paths
 log_dir = '../log/'
@@ -27,9 +28,12 @@ def train():
 
     with tf.Graph().as_default():
         # Testing constants
-        images = tf.ones([batch_size, image_size, image_size, channel_num])
-        thetas = tf.ones([batch_size, theta_size])
-        labels = tf.ones([batch_size, label_size])
+        data_dir = '/home/shixun7/TFRecord/'
+        images, class_labels, theta_labels = read_TFRecord.get_dataset(data_dir, 'Train_positive', 2, 2)
+        print('images', images)
+        print('class_labels', class_labels)
+        print('theta_labels', theta_labels)
+        tf.summary.image('images', images)
 
         # Create the model
         predictions = model.grasp_net(images)
@@ -46,7 +50,7 @@ def train():
             staircase=True)
 
         # Define the loss functions and get the total loss
-        loss = model.custom_loss_function(predictions, thetas, labels)
+        loss = model.custom_loss_function(predictions, theta_labels, class_labels)
         tf.losses.add_loss(loss)
         total_loss = tf.losses.get_total_loss()
 
