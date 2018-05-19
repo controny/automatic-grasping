@@ -49,3 +49,30 @@ def custom_loss_function(logits, theta_labels, class_labels):
     loss = tf.reduce_sum(entropys)
 
     return loss
+
+
+def get_num_correctness(logits, theta_labels, class_labels):
+    """
+    Function to calculate accuracy.
+
+    :param logits: should be shape of [batch_size, 18]
+    :param theta_labels: each denoted by a int
+    :param class_labels: each denoted by 0 or 1
+    :return: number of correctness
+    """
+    theta_labels = tf.one_hot(theta_labels, 18)
+    # Extract outputs of coresponding angles
+    angle_outputs = tf.reduce_sum(theta_labels * logits, 1)
+    # Get positive and negative indexes of labels
+    # Remember to cast bool to int for later computing
+    p_label_indexes = tf.cast(tf.equal(class_labels, tf.ones(class_labels.shape, dtype=tf.int32)), tf.int32)
+    n_label_indexes = tf.cast(tf.equal(class_labels, tf.zeros(class_labels.shape, dtype=tf.int32)), tf.int32)
+    threshold = tf.constant(0.5, shape=angle_outputs.shape)
+    # Among the outputs of angles, those >= threshold will be considered positive and vice versa
+    p_logits_indexes = tf.cast(tf.greater_equal(angle_outputs, threshold), tf.int32)
+    n_logits_indexes = tf.cast(tf.less(angle_outputs, threshold), tf.int32)
+    # Finally, we can calculate numbers of true positive and true negative
+    num_true_p = tf.reduce_sum(p_label_indexes * p_logits_indexes)
+    num_true_n = tf.reduce_sum(n_label_indexes * n_logits_indexes)
+
+    return num_true_p + num_true_n
