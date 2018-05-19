@@ -20,12 +20,12 @@ flags.DEFINE_string('model_name', 'model', 'model name')
 flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 'pretrained mode path')
 
 # Training parameters
-flags.DEFINE_integer('batch_size', 100, 'batch size')
-flags.DEFINE_integer('training_steps', 100, 'training steps')
-flags.DEFINE_integer('logging_gap', 10, 'logging gap')
+flags.DEFINE_integer('batch_size', 50, 'batch size')
+flags.DEFINE_integer('num_epochs', 30, 'number of epochs')
+flags.DEFINE_integer('logging_gap', 50, 'logging gap')
+flags.DEFINE_integer('num_epochs_before_decay', 10, 'number of epochs before decay')
 flags.DEFINE_float('initial_learning_rate', 0.0001, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.7, 'learning rate decay factor')
-decay_steps = 50    # Better to be calculate dynamically
 
 FLAGS = flags.FLAGS
 
@@ -47,6 +47,10 @@ def train():
 
         # Create the global step for monitoring the learning_rate and training.
         global_step = tf.train.get_or_create_global_step()
+
+        num_samples = 16000
+        num_steps_per_epoch = int(num_samples / FLAGS.batch_size)
+        decay_steps = int(FLAGS.num_epochs_before_decay * num_steps_per_epoch)
 
         # Define exponentially decaying learning rate
         learning_rate = tf.train.exponential_decay(
@@ -93,15 +97,19 @@ def train():
 
         # Run the managed session
         with sv.managed_session() as sess:
-            for step in range(FLAGS.training_steps):
+            for step in range(num_steps_per_epoch * FLAGS.num_epochs):
+                # At the start of every epoch, show the vital information:
+                if step % num_steps_per_epoch == 0:
+                    print('------Epoch %d/%d-----' % (step/num_steps_per_epoch + 1, FLAGS.num_epochs))
+
                 start_time = time.time()
                 total_loss, global_step_count = sess.run([train_op, global_step])
                 time_elapsed = time.time() - start_time
-                print('global step %s: loss: %.4f (%.2f sec/step)'
-                      % (global_step_count, total_loss, time_elapsed))
 
                 # Log the summaries every constant steps
                 if global_step_count % FLAGS.logging_gap == 0:
+                    print('global step %s: loss: %.4f (%.2f sec/step)'
+                          % (global_step_count, total_loss, time_elapsed))
                     summaries = sess.run(summary_op)
                     sv.summary_computed(sess, summaries)
 
