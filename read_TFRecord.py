@@ -5,23 +5,13 @@ import io
 
 slim = tf.contrib.slim
 
-def get_dataset(dataset_dir,
-                set,  
-                num_readers,
-                num_preprocessing_threads,
-                image_size = 227,
-                batch_size = 64,
-                num_epochs = None,
-                shuffle=True,
-                is_training=True):
+def get_dataset(dataset_dir, set):
     dataset_dir_list = [os.path.join(dataset_dir, filename) for filename in os.listdir(dataset_dir) if filename.startswith(set)]
-    '''
+    
     num_samples = 0
     for tfrecord_file in dataset_dir_list:
         for record in tf.python_io.tf_record_iterator(tfrecord_file):
             num_samples += 1
-    print('num_samples', num_samples)
-    '''
 
     reader = tf.TFRecordReader
 
@@ -44,17 +34,25 @@ def get_dataset(dataset_dir,
         data_sources = dataset_dir_list,
         reader = reader,
         decoder = decoder,
-        num_samples = 3, #???
-        items_to_descriptions=None 
-        )
-    provider = slim.dataset_data_provider.DatasetDataProvider(
-        dataset,
-        num_readers = num_readers,
-        shuffle = shuffle,
-        num_epochs = num_epochs,
-        common_queue_capacity=20 * batch_size,
-        common_queue_min=10 * batch_size
-        )
+        num_samples = num_samples, 
+        items_to_descriptions = None)
+    
+    return dataset, num_samples
+
+def load_batch(dataset, 
+               num_epochs = None,
+               image_size = 224,
+               batch_size = 128,
+               num_readers = 2,
+               num_threads = 2,
+               shuffle = True):
+    provider = slim.dataset_data_provider.DatasetDataProvider(dataset,
+                                                              num_readers = num_readers,
+                                                              shuffle = shuffle,
+                                                              num_epochs = num_epochs,
+                                                              common_queue_capacity=20 * batch_size,
+                                                              common_queue_min=10 * batch_size
+                                                              )
 
     [image, class_label, theta_label] = provider.get(['image', 'class_label', 'theta_label'])
     #do a simple reshape to batch it up
@@ -64,40 +62,73 @@ def get_dataset(dataset_dir,
     image = tf.image.convert_image_dtype(image, tf.float32)
     image -= [123.68, 116.779, 103.939]
 
-    #image = tf.Print(image, [image.shape], 'image: ')
+    images, class_labels, theta_labels = tf.train.batch([image, class_label, theta_label],
+                                                        batch_size = batch_size,
+                                                        num_threads = num_threads,
+                                                        capacity = 5 * batch_size)
 
-    if is_training:
-        images, class_labels, theta_labels = tf.train.batch([image, class_label, theta_label],
-                                                            batch_size = batch_size,
-                                                            num_threads = num_preprocessing_threads,
-                                                            capacity = 5 * batch_size)
-    else:
-        images = tf.expand_dims(image,axis=0)
-        class_labels = tf.expand_dims(class_label, axis=0)
-        theta_labels = tf.expand_dims(theta_label, axis=0)
+
     return images, class_labels, theta_labels
+
+def get_batch_images(dataset_dir = "/home/shixun7/TFRecord/", datasetName = "Train", batch_size = 128, image_size = 224):
+    num_readers = 2
+    num_preprocessing_threads = 2
+    shuffle = True
+    num_epochs = None 
+    if datasetName == "Train":
+        dataset_p, Train_p_num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Train_positive')
+        dataset_n,Train_n_num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Train_negative')
+
+        images_p, class_labels_p, theta_labels_p = load_batch(dataset = dataset_p, 
+                                                              image_size = image_size,
+                                                              #num_epochs = Train_p_num_samples, 
+                                                              num_epochs = num_epochs,
+                                                              batch_size = int(batch_size / 2),
+                                                              num_readers = num_readers,
+                                                              num_threads = num_preprocessing_threads,
+                                                              shuffle = shuffle)
+        images_n, class_labels_n, theta_labels_n = load_batch(dataset = dataset_n, 
+                                                              image_size = image_size,
+                                                              #num_epochs = Train_p_num_samples,
+                                                              num_epochs = num_epochs,
+                                                              batch_size = int(batch_size / 2),
+                                                              num_readers = num_readers,
+                                                              num_threads = num_preprocessing_threads,
+                                                              shuffle = shuffle)
+
+        images = tf.concat([images_p, images_n], axis=0)
+        class_labels = tf.concat([class_labels_p, class_labels_n], axis=0)
+        theta_labels = tf.concat([theta_labels_p, theta_labels_n], axis=0)
+        return images, class_labels, theta_labels, Train_n_num_samples * 2
+
+    if datasetName == "Validation":
+        dataset, num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Validation')
+    if datasetName == "Test":
+        dataset, num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Test')
+
+    images, class_labels, theta_labels = load_batch(dataset = dataset, 
+                                                    image_size = image_size,
+                                                    #num_epochs = num_samples, 
+                                                    num_epochs = num_epochs,
+                                                    batch_size = batch_size,
+                                                    num_readers = num_readers,
+                                                    num_threads = num_preprocessing_threads,
+                                                    shuffle = shuffle)
+    return images, class_labels, theta_labels, num_samples
+    
 
 flags = tf.app.flags
 flags.DEFINE_string('source_dir', "/home/shixun7/TFRecord/", 'String: Your TFRecord directory')
-#flags.DEFINE_string('source_dir', "TFRecord_test\\", 'String: Your TFRecord directory')
-#flags.DEFINE_string('source_dir', "/home/shixun7/cr/simple_TFRecord_test/", 'String: Your TFRecord directory')
+flags.DEFINE_string('set', "Train", 'String: Your TFRecord directory')
 FLAGS = flags.FLAGS
 
 def main():
     with tf.Graph().as_default():
-        images_p, class_labels_p, theta_labels_p = get_dataset(dataset_dir = FLAGS.source_dir,
-                                                                set = 'Train_positive',
-                                                                num_readers = 2,
-                                                                num_preprocessing_threads = 2)
-        tf.summary.image('positive images', images_p)
-        images_n, class_labels_n, theta_labels_n = get_dataset(dataset_dir = FLAGS.source_dir,
-                                                                set = 'Train_negative',
-                                                                num_readers = 2,
-                                                                num_preprocessing_threads = 2)
-        images = tf.concat([images_p, images_n], axis=0)
-        class_labels = tf.concat([class_labels_p, class_labels_n], axis=0)
-        theta_labels = tf.concat([theta_labels_p, theta_labels_n], axis=0)
-
+        images, class_labels, theta_labels, num_samples = get_batch_images(#dataset_dir = FLAGS.source_dir,
+                                                              datasetName = FLAGS.set, 
+                                                              batch_size = 128, 
+                                                              image_size = 224)
+        tf.summary.image('Train images', images, max_outputs=128)
         summary_op = tf.summary.merge_all()
         with tf.Session() as sess:
             log_dir = './dataset_test/'
@@ -109,7 +140,7 @@ def main():
             tf.global_variables_initializer().run()
             coord = tf.train.Coordinator() 
             tf.train.start_queue_runners(coord=coord)
-            summary = sess.run(summary_op)
+            summary = sess.run(summary_op) 
             writer.add_summary(summary)
         writer.close()
 
