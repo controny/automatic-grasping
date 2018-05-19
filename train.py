@@ -20,9 +20,9 @@ flags.DEFINE_string('model_name', 'model', 'model name')
 flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 'pretrained mode path')
 
 # Training parameters
-flags.DEFINE_integer('batch_size', 50, 'batch size')
+flags.DEFINE_integer('batch_size', 10, 'batch size')
 flags.DEFINE_integer('num_epochs', 30, 'number of epochs')
-flags.DEFINE_integer('logging_gap', 50, 'logging gap')
+flags.DEFINE_integer('logging_gap', 10, 'logging gap')
 flags.DEFINE_integer('num_epochs_before_decay', 10, 'number of epochs before decay')
 flags.DEFINE_float('initial_learning_rate', 0.0001, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.7, 'learning rate decay factor')
@@ -37,20 +37,25 @@ def train():
         # Testing constants
         data_dir = '/home/shixun7/TFRecord/'
         images, class_labels, theta_labels = read_TFRecord.get_dataset(data_dir, 'Train_positive', 2, 2)
+
+        # record image data to check
+        tf.summary.image('images', images, max_outputs=FLAGS.batch_size)
         print('images', images)
         print('class_labels', class_labels)
         print('theta_labels', theta_labels)
-        tf.summary.image('images', images)
 
-        # Create the model
-        predictions = model.grasp_net(images)
+        training_dataset, num_training_samples = read_TFRecord.get_split('train')
+        validation_dataset, num_validation_samples = read_TFRecord.get_split('train')
+        training_images, training_class_labels, training_theta_labels =\
+            read_TFRecord.load_batch(training_dataset, FLAGS.batch_size)
+        validation_images, validation_class_labels, validation_theta_labels = \
+            read_TFRecord.load_batch(validation_dataset, FLAGS.batch_size)
+
+        num_steps_per_epoch = int(num_training_samples / FLAGS.batch_size)
+        decay_steps = int(FLAGS.num_epochs_before_decay * num_steps_per_epoch)
 
         # Create the global step for monitoring the learning_rate and training.
         global_step = tf.train.get_or_create_global_step()
-
-        num_samples = 16000
-        num_steps_per_epoch = int(num_samples / FLAGS.batch_size)
-        decay_steps = int(FLAGS.num_epochs_before_decay * num_steps_per_epoch)
 
         # Define exponentially decaying learning rate
         learning_rate = tf.train.exponential_decay(
@@ -61,9 +66,19 @@ def train():
             staircase=True)
 
         # Define the loss functions and get the total loss
-        loss = model.custom_loss_function(predictions, theta_labels, class_labels)
-        tf.losses.add_loss(loss)
+        training_pred = model.grasp_net(training_images)
+        training_loss = model.custom_loss_function(
+            training_pred, training_theta_labels, training_class_labels)
+        tf.losses.add_loss(training_loss)
         total_loss = tf.losses.get_total_loss()
+
+        # Compute loss for validation
+        validation_pred = model.grasp_net(validation_images)
+        validation_loss_op = model.custom_loss_function(
+            validation_pred, validation_theta_labels, validation_class_labels)
+        # Compute number of correctness
+        num_correctness_op = model.get_num_correctness(
+            validation_pred, validation_theta_labels, validation_class_labels)
 
         # Set optimizer
         optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -80,8 +95,7 @@ def train():
         os.mkdir(model_log_dir)
 
         # Set summary
-        tf.summary.scalar('prediction: ', tf.reduce_mean(predictions))
-        tf.summary.scalar('loss: ', total_loss)
+        tf.summary.scalar('loss: ', validation_loss)
         summary_op = tf.summary.merge_all()
 
         # Restore pre-trained model
@@ -103,13 +117,15 @@ def train():
                     print('------Epoch %d/%d-----' % (step/num_steps_per_epoch + 1, FLAGS.num_epochs))
 
                 start_time = time.time()
-                total_loss, global_step_count = sess.run([train_op, global_step])
+                _, global_step_count = sess.run([train_op, global_step])
                 time_elapsed = time.time() - start_time
 
                 # Log the summaries every constant steps
                 if global_step_count % FLAGS.logging_gap == 0:
-                    print('global step %s: loss: %.4f (%.2f sec/step)'
-                          % (global_step_count, total_loss, time_elapsed))
+                    loss, num_correctness = sess.run([validation_loss_op, num_correctness_op])
+                    accuracy = 1.0 * num_correctness / FLAGS.batch_size
+                    print('global step %s: loss = %.4f, accuracy = %.4f (%d / %d) with (%.2f sec/step)'
+                          % (global_step_count, loss, accuracy,  num_correctness, FLAGS.batch_size, time_elapsed))
                     summaries = sess.run(summary_op)
                     sv.summary_computed(sess, summaries)
 

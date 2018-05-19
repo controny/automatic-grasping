@@ -58,7 +58,7 @@ def evaluate():
             for step in range(num_steps_per_epoch * FLAGS.num_epochs):
                 current_loss, num_correctness = sess.run([total_loss_op, num_correctness_op])
                 accuracy = 1.0 * num_correctness / FLAGS.batch_size
-                print('Step %d: loss = %.2f, accuracy = %.2f (%d / %d)' %
+                print('Step %d: loss = %.4f, accuracy = %.4f (%d / %d)' %
                       (step, current_loss, accuracy, num_correctness, FLAGS.batch_size))
                 total_num_correctness += num_correctness
                 total_examples += FLAGS.batch_size
@@ -66,7 +66,7 @@ def evaluate():
 
             average_loss = total_loss / (num_steps_per_epoch * FLAGS.num_epochs)
             final_accuracy = 1.0 * total_num_correctness / total_examples
-            print('Final: loss = %.2f, accuracy = %.2f (%d / %d)' %
+            print('Final: loss = %.4f, accuracy = %.4f (%d / %d)' %
                   (average_loss, final_accuracy, total_num_correctness, total_examples))
 
 
