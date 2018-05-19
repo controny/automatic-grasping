@@ -34,16 +34,6 @@ def train():
     """Main training function to set out training."""
 
     with tf.Graph().as_default():
-        # Testing constants
-        data_dir = '/home/shixun7/TFRecord/'
-        images, class_labels, theta_labels = read_TFRecord.get_dataset(data_dir, 'Train_positive', 2, 2)
-
-        # record image data to check
-        tf.summary.image('images', images, max_outputs=FLAGS.batch_size)
-        print('images', images)
-        print('class_labels', class_labels)
-        print('theta_labels', theta_labels)
-
         training_dataset, num_training_samples = read_TFRecord.get_split('train')
         validation_dataset, num_validation_samples = read_TFRecord.get_split('train')
         training_images, training_class_labels, training_theta_labels =\
@@ -83,8 +73,8 @@ def train():
         # Set optimizer
         optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 
-        # create_train_op ensures that each time we ask for the loss, the update_ops
-        # are run and the gradients being computed are applied too
+        # Create_train_op to ensure that each time we ask for the loss,
+        # the updates are run and the gradients being computed are applied too
         train_op = slim.learning.create_train_op(total_loss, optimizer)
 
         # Where model logs are stored
@@ -95,7 +85,8 @@ def train():
         os.mkdir(model_log_dir)
 
         # Set summary
-        tf.summary.scalar('loss: ', validation_loss)
+        tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.batch_size)
+        tf.summary.scalar('validation/loss: ', validation_loss_op)
         summary_op = tf.summary.merge_all()
 
         # Restore pre-trained model
