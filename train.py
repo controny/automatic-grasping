@@ -34,12 +34,10 @@ def train():
     """Main training function to set out training."""
 
     with tf.Graph().as_default():
-        training_dataset, num_training_samples = read_TFRecord.get_split('train')
-        validation_dataset, num_validation_samples = read_TFRecord.get_split('train')
-        training_images, training_class_labels, training_theta_labels =\
-            read_TFRecord.load_batch(training_dataset, FLAGS.batch_size)
-        validation_images, validation_class_labels, validation_theta_labels = \
-            read_TFRecord.load_batch(validation_dataset, FLAGS.batch_size)
+        training_images, training_class_labels, training_theta_labels, num_training_samples =\
+            read_TFRecord.get_batch_data('Train', FLAGS.batch_size)
+        validation_images, validation_class_labels, validation_theta_labels, num_validation_samples = \
+            read_TFRecord.get_batch_data('Validation', FLAGS.batch_size)
 
         num_steps_per_epoch = int(num_training_samples / FLAGS.batch_size)
         decay_steps = int(FLAGS.num_epochs_before_decay * num_steps_per_epoch)

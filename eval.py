@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import model
+import read_TFRecord
 
 flags = tf.flags
 
@@ -22,8 +23,7 @@ def evaluate():
     """Main evaluating function to set out training."""
 
     with tf.Graph().as_default():
-        dataset, num_samples = read_TFRecord.get_split('test')
-        images, class_labels, theta_labels = read_TFRecord.load_batch(dataset, FLAGS.batch_size)
+        images, class_labels, theta_labels, num_samples = read_TFRecord.get_batch_data('Test', FLAGS.batch_size)
 
         num_steps_per_epoch = int(num_samples / FLAGS.batch_size)
 

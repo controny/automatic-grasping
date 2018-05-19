@@ -70,7 +70,7 @@ def load_batch(dataset,
 
     return images, class_labels, theta_labels
 
-def get_batch_images(dataset_dir = "/home/shixun7/TFRecord/", datasetName = "Train", batch_size = 128, image_size = 224):
+def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
     num_readers = 2
     num_preprocessing_threads = 2
     shuffle = True
@@ -124,7 +124,7 @@ FLAGS = flags.FLAGS
 
 def main():
     with tf.Graph().as_default():
-        images, class_labels, theta_labels, num_samples = get_batch_images(#dataset_dir = FLAGS.source_dir,
+        images, class_labels, theta_labels, num_samples = get_batch_data(#dataset_dir = FLAGS.source_dir,
                                                               datasetName = FLAGS.set, 
                                                               batch_size = 128, 
                                                               image_size = 224)
