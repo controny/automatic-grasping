@@ -34,6 +34,7 @@ def train():
     """Main training function to set out training."""
 
     with tf.Graph().as_default():
+        # TODO: should use placeholders
         training_images, training_class_labels, training_theta_labels, num_training_samples =\
             read_TFRecord.get_batch_data('Train', FLAGS.batch_size)
         validation_images, validation_class_labels, validation_theta_labels, num_validation_samples = \
@@ -61,7 +62,7 @@ def train():
         total_loss = tf.losses.get_total_loss()
 
         # Compute loss for validation
-        validation_pred = model.grasp_net(validation_images)
+        validation_pred = model.grasp_net(validation_images, is_training=False)
         validation_loss_op = model.custom_loss_function(
             validation_pred, validation_theta_labels, validation_class_labels)
         # Compute number of correctness

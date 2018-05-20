@@ -8,15 +8,16 @@ from tensorflow.python.ops import variable_scope
 vgg = nets.vgg
 
 
-def grasp_net(images):
+def grasp_net(images, is_training=True):
     """
     A net taking advantage of pretrained VGG16.
 
     :param images: size of 224x224
+    :param is_training: whether training or not
     :return: logits with shape of [batch_size, 18]
     """
 
-    vgg_output, _ = vgg.vgg_16(images, is_training=True)
+    vgg_output, _ = vgg.vgg_16(images, is_training=is_training)
     tf.summary.scalar('vgg_output', tf.reduce_mean(vgg_output))
 
     # Add extra layers to the end of VGG16

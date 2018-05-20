@@ -40,7 +40,7 @@ def evaluate():
             return saver.restore(session, checkpoint_file)
 
         # Define the loss functions and get the total loss
-        predictions = model.grasp_net(images)
+        predictions = model.grasp_net(images, is_training=False)
         loss = model.custom_loss_function(predictions, theta_labels, class_labels)
         tf.losses.add_loss(loss)
         total_loss_op = tf.losses.get_total_loss()
