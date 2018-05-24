@@ -74,7 +74,9 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
     num_readers = 2
     num_preprocessing_threads = 2
     shuffle = True
-    num_epochs = None 
+    num_epochs = None
+    theta_label_size = 18
+    class_label_size = 1
     if datasetName == "Train":
         dataset_p, Train_p_num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Train_positive')
         dataset_n,Train_n_num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Train_negative')
@@ -99,6 +101,9 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
         images = tf.concat([images_p, images_n], axis=0)
         class_labels = tf.concat([class_labels_p, class_labels_n], axis=0)
         theta_labels = tf.concat([theta_labels_p, theta_labels_n], axis=0)
+        # change shape
+        class_labels = tf.reshape(class_labels, [-1, class_label_size])
+        theta_labels = tf.one_hot(theta_labels, theta_label_size)
         return images, class_labels, theta_labels, Train_n_num_samples * 2
 
     if datasetName == "Validation":
@@ -114,6 +119,9 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
                                                     num_readers = num_readers,
                                                     num_threads = num_preprocessing_threads,
                                                     shuffle = shuffle)
+    # change shape
+    class_labels = tf.reshape(class_labels, [-1, class_label_size])
+    theta_labels = tf.one_hot(theta_labels, theta_label_size)
     return images, class_labels, theta_labels, num_samples
     
 

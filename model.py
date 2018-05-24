@@ -2,7 +2,6 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.slim.nets as nets
-from tensorflow.python.ops import variable_scope
 
 
 vgg = nets.vgg
@@ -18,10 +17,9 @@ def grasp_net(images, is_training=True):
     """
 
     vgg_output, _ = vgg.vgg_16(images, is_training=is_training)
-    tf.summary.scalar('vgg_output', tf.reduce_mean(vgg_output))
 
     # Add extra layers to the end of VGG16
-    with variable_scope.variable_scope('extra_layers'):
+    with tf.variable_scope('extra_layers'):
         # Use sigmoid for the final layer
         net = slim.fully_connected(vgg_output, 18, scope='fc1', activation_fn=tf.sigmoid)
 
@@ -33,12 +31,11 @@ def custom_loss_function(logits, theta_labels, class_labels):
     Custom loss function according to the paper.
 
     :param logits: should be shape of [batch_size, 18]
-    :param theta_labels: each denoted by a int, should be converted to one-hot vector
+    :param theta_labels: each denoted by an one-hot vector
     :param class_labels: each denoted by 0 or 1, should be converted to float
     :return: reduce sum of loss for a batch
     """
-    theta_labels = tf.one_hot(theta_labels, 18)
-    class_labels = tf.reshape(tf.cast(class_labels, tf.float32), [-1, 1])
+    class_labels = tf.cast(class_labels, tf.float32)
     filtered_activation = tf.reduce_sum(logits*theta_labels, 1)
     # Reshape the activation, such that it shares the shape with labels
     filtered_activation = tf.reshape(filtered_activation, [-1, 1])
@@ -54,13 +51,14 @@ def get_num_correctness(logits, theta_labels, class_labels):
     Function to calculate accuracy.
 
     :param logits: should be shape of [batch_size, 18]
-    :param theta_labels: each denoted by a int
+    :param theta_labels: each denoted by an one-hot vector
     :param class_labels: each denoted by 0 or 1
     :return: number of correctness
     """
-    theta_labels = tf.one_hot(theta_labels, 18)
     # Extract outputs of coresponding angles
     angle_outputs = tf.reduce_sum(theta_labels * logits, 1)
+    # Convert class labels to 1-D array
+    class_labels = tf.cast(tf.squeeze(class_labels), tf.int32)
     # Get positive and negative indexes of labels
     # Remember to cast bool to int for later computing
     p_label_indexes = tf.cast(tf.equal(class_labels, tf.ones(class_labels.shape, dtype=tf.int32)), tf.int32)
