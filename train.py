@@ -21,6 +21,7 @@ flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 
 
 # Training parameters
 flags.DEFINE_integer('batch_size', 64, 'batch size')
+flags.DEFINE_integer('validation_batch_size', 1000, 'batch size for validation')
 flags.DEFINE_integer('num_epochs', 3, 'number of epochs')
 flags.DEFINE_integer('logging_gap', 50, 'logging gap')
 flags.DEFINE_integer('num_epochs_before_decay', 10, 'number of epochs before decay')
@@ -37,7 +38,7 @@ def train():
         training_images, training_class_labels, training_theta_labels, num_training_samples =\
             read_TFRecord.get_batch_data('Train', FLAGS.batch_size)
         validation_images, validation_class_labels, validation_theta_labels, num_validation_samples = \
-            read_TFRecord.get_batch_data('Validation', FLAGS.batch_size)
+            read_TFRecord.get_batch_data('Validation', FLAGS.validation_batch_size)
 
         num_steps_per_epoch = int(num_training_samples / FLAGS.batch_size)
         decay_steps = int(FLAGS.num_epochs_before_decay * num_steps_per_epoch)
@@ -62,9 +63,9 @@ def train():
 
         with tf.variable_scope('validation'):
             # Compute loss for validation
-            validation_pred = model.grasp_net(training_images, is_training=False)
+            validation_pred = model.grasp_net(validation_images, is_training=False)
             validation_loss_op = model.custom_loss_function(
-                validation_pred, training_theta_labels, training_class_labels)
+                validation_pred, validation_theta_labels, validation_class_labels)
             # Compute number of correctness
             num_correctness_op = model.get_num_correctness(
                 validation_pred, validation_theta_labels, validation_class_labels)
@@ -115,7 +116,8 @@ def train():
                     loss, num_correctness, summaries = sess.run([validation_loss_op, num_correctness_op, summary_op])
                     accuracy = 1.0 * num_correctness / FLAGS.batch_size
                     print('global step %s: loss = %.4f, accuracy = %.4f (%d / %d) with (%.2f sec/step)'
-                          % (global_step_count, loss, accuracy,  num_correctness, FLAGS.batch_size, time_elapsed))
+                          % (global_step_count, loss,
+                             accuracy,  num_correctness, FLAGS.validation_batch_size, time_elapsed))
                     training_loss = sess.run(total_loss)
                     print('training loss = %.4f' % training_loss)
                     sv.summary_computed(sess, summaries)
