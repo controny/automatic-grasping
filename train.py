@@ -23,10 +23,11 @@ flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 
 flags.DEFINE_integer('batch_size', 64, 'batch size')
 flags.DEFINE_integer('validation_batch_size', 100, 'batch size for validation')
 flags.DEFINE_integer('num_epochs', 1, 'number of epochs')
+flags.DEFINE_integer('max_steps', 2000, 'number of max training steps')
 flags.DEFINE_integer('logging_gap', 50, 'logging gap')
-flags.DEFINE_integer('num_epochs_before_decay', 10, 'number of epochs before decay')
-flags.DEFINE_float('initial_learning_rate', 0.0001, 'initial learning rate')
-flags.DEFINE_float('learning_rate_decay_factor', 0.7, 'learning rate decay factor')
+flags.DEFINE_integer('decay_steps', 1000, 'number of steps before decay')
+flags.DEFINE_float('learning_rate', 0.0001, 'initial learning rate')
+flags.DEFINE_float('learning_rate_decay_factor', 0.95, 'learning rate decay factor')
 
 FLAGS = flags.FLAGS
 
@@ -41,16 +42,15 @@ def train():
             read_TFRecord.get_batch_data('Validation', FLAGS.validation_batch_size)
 
         num_steps_per_epoch = int(num_training_samples / FLAGS.batch_size)
-        decay_steps = int(FLAGS.num_epochs_before_decay * num_steps_per_epoch)
 
         # Create the global step for monitoring the learning_rate and training.
         global_step = tf.train.get_or_create_global_step()
 
         # Define exponentially decaying learning rate
         learning_rate = tf.train.exponential_decay(
-            learning_rate=FLAGS.initial_learning_rate,
+            learning_rate=FLAGS.learning_rate,
             global_step=global_step,
-            decay_steps=decay_steps,
+            decay_steps=FLAGS.decay_steps,
             decay_rate=FLAGS.learning_rate_decay_factor,
             staircase=True)
 
@@ -85,13 +85,15 @@ def train():
         os.mkdir(model_log_dir)
 
         # Set summary
-        # tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.batch_size)
+        tf.summary.scalar('learning_rate', learning_rate)
+        tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.validation_batch_size)
         tf.summary.scalar('validation/loss: ', validation_loss_op)
+        tf.summary.scalar('training/loss: ', total_loss)
         summary_op = tf.summary.merge_all()
 
         # Restore pre-trained model
         variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8',
-                                                                      'extra_layers', 'validation'])
+                                                                      'validation'])
         # print(*variables_to_restore, sep='\n')
         saver = tf.train.Saver(variables_to_restore)
 
@@ -104,24 +106,23 @@ def train():
 
         # Run the managed session
         with sv.managed_session() as sess:
-            for step in range(num_steps_per_epoch * FLAGS.num_epochs):
+            for step in range(min(FLAGS.max_steps, num_steps_per_epoch * FLAGS.num_epochs)):
                 # At the start of every epoch, show the vital information:
                 if step % num_steps_per_epoch == 0:
                     print('------Epoch %d/%d-----' % (step/num_steps_per_epoch + 1, FLAGS.num_epochs))
 
                 start_time = time.time()
-                _, global_step_count = sess.run([train_op, global_step])
+                _, global_step_count, training_loss = sess.run([train_op, global_step, total_loss])
+                print('global step %s: training loss = %.4f' % (global_step_count, training_loss))
                 time_elapsed = time.time() - start_time
 
                 # Log the summaries every constant steps
-                if global_step_count % FLAGS.logging_gap == 0:
+                if (global_step_count + 1) % FLAGS.logging_gap == 0:
                     loss, num_correctness, summaries = sess.run([validation_loss_op, num_correctness_op, summary_op])
                     accuracy = 1.0 * num_correctness / FLAGS.validation_batch_size
                     print('global step %s: loss = %.4f, accuracy = %.4f (%d / %d) with (%.2f sec/step)'
                           % (global_step_count, loss,
                              accuracy,  num_correctness, FLAGS.validation_batch_size, time_elapsed))
-                    training_loss = sess.run(total_loss)
-                    print('training loss = %.4f' % training_loss)
                     sv.summary_computed(sess, summaries)
 
 

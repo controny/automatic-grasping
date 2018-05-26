@@ -15,10 +15,37 @@ def grasp_net(images, is_training=True):
     :param is_training: whether training or not
     :return: logits with shape of [batch_size, 18]
     """
-
-    vgg_output, _ = vgg.vgg_16(images, num_classes=18, is_training=is_training)
-    # Apply sigmoid to the output
-    net = tf.sigmoid(vgg_output)
+    dropout_keep_prob = 0.7
+    num_classes = 18
+    with tf.variable_scope('vgg_16', 'vgg_16', [images]) as sc:
+        # Collect outputs for conv2d, fully_connected and max_pool2d.
+        with slim.arg_scope(
+                [slim.conv2d, slim.fully_connected, slim.max_pool2d]):
+            net = slim.repeat(
+                images, 2, slim.conv2d, 64, [3, 3], scope='conv1')
+            net = slim.max_pool2d(net, [2, 2], scope='pool1')
+            net = slim.repeat(net, 2, slim.conv2d, 128, [3, 3], scope='conv2')
+            net = slim.max_pool2d(net, [2, 2], scope='pool2')
+            net = slim.repeat(net, 3, slim.conv2d, 256, [3, 3], scope='conv3')
+            net = slim.max_pool2d(net, [2, 2], scope='pool3')
+            net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv4')
+            net = slim.max_pool2d(net, [2, 2], scope='pool4')
+            net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv5')
+            net = slim.max_pool2d(net, [2, 2], scope='pool5')
+            # Use conv2d instead of fully_connected layers.
+            net = slim.conv2d(net, 4096, [7, 7], padding='VALID', scope='fc6')
+            net = slim.dropout(
+                net, dropout_keep_prob, is_training=is_training, scope='dropout6')
+            net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
+            net = slim.dropout(
+                net, dropout_keep_prob, is_training=is_training, scope='dropout7')
+            net = slim.conv2d(
+                net,
+                num_classes, [1, 1],
+                activation_fn=tf.sigmoid,
+                normalizer_fn=None,
+                scope='fc8')
+            net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
 
     return net
 
@@ -30,16 +57,16 @@ def custom_loss_function(logits, theta_labels, class_labels):
     :param logits: should be shape of [batch_size, 18]
     :param theta_labels: each denoted by an one-hot vector
     :param class_labels: each denoted by 0 or 1, should be converted to float
-    :return: reduce sum of loss for a batch
+    :return: reduce mean of loss for a batch
     """
     class_labels = tf.cast(class_labels, tf.float32)
     filtered_scores = tf.reduce_sum(logits*theta_labels, 1)
     # Reshape the scores, such that it shares the shape with labels
     filtered_scores = tf.reshape(filtered_scores, [-1, 1])
-    clipped_scores = tf.clip_by_value(filtered_scores, 0.001, 0.999)
+    clipped_scores = tf.clip_by_value(filtered_scores, 10e-8, 1.0-10e-8)
     entropys = - class_labels * tf.log(clipped_scores)\
                - (1-class_labels) * tf.log(1-clipped_scores)
-    loss = tf.reduce_sum(entropys)
+    loss = tf.reduce_mean(entropys)
 
     return loss
 
