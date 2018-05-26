@@ -21,8 +21,8 @@ flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 
 
 # Training parameters
 flags.DEFINE_integer('batch_size', 64, 'batch size')
-flags.DEFINE_integer('validation_batch_size', 1000, 'batch size for validation')
-flags.DEFINE_integer('num_epochs', 3, 'number of epochs')
+flags.DEFINE_integer('validation_batch_size', 100, 'batch size for validation')
+flags.DEFINE_integer('num_epochs', 1, 'number of epochs')
 flags.DEFINE_integer('logging_gap', 50, 'logging gap')
 flags.DEFINE_integer('num_epochs_before_decay', 10, 'number of epochs before decay')
 flags.DEFINE_float('initial_learning_rate', 0.0001, 'initial learning rate')
@@ -85,12 +85,14 @@ def train():
         os.mkdir(model_log_dir)
 
         # Set summary
-        tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.batch_size)
+        # tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.batch_size)
         tf.summary.scalar('validation/loss: ', validation_loss_op)
         summary_op = tf.summary.merge_all()
 
         # Restore pre-trained model
-        variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc8', 'extra_layers/fc1', 'validation'])
+        variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8',
+                                                                      'extra_layers', 'validation'])
+        # print(*variables_to_restore, sep='\n')
         saver = tf.train.Saver(variables_to_restore)
 
         def restore_fn(session):
@@ -114,7 +116,7 @@ def train():
                 # Log the summaries every constant steps
                 if global_step_count % FLAGS.logging_gap == 0:
                     loss, num_correctness, summaries = sess.run([validation_loss_op, num_correctness_op, summary_op])
-                    accuracy = 1.0 * num_correctness / FLAGS.batch_size
+                    accuracy = 1.0 * num_correctness / FLAGS.validation_batch_size
                     print('global step %s: loss = %.4f, accuracy = %.4f (%d / %d) with (%.2f sec/step)'
                           % (global_step_count, loss,
                              accuracy,  num_correctness, FLAGS.validation_batch_size, time_elapsed))

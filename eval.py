@@ -14,7 +14,7 @@ flags.DEFINE_string('model_name', 'model', 'model name')
 flags.DEFINE_integer('batch_size', 50, 'batch size')
 
 # State the number of epochs to evaluate
-num_epochs = 1
+flags.DEFINE_integer('num_epochs', 1, 'number of epochs')
 
 FLAGS = flags.FLAGS
 
@@ -27,6 +27,14 @@ def evaluate():
 
         num_steps_per_epoch = int(num_samples / FLAGS.batch_size)
 
+        # Define the loss functions and get the total loss
+        predictions = model.grasp_net(images, is_training=False)
+        loss = model.custom_loss_function(predictions, theta_labels, class_labels)
+        tf.losses.add_loss(loss)
+        total_loss_op = tf.losses.get_total_loss()
+        # Compute number of correctness
+        num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
+
         # Where model logs are stored
         model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
         # Get the latest checkpoint file
@@ -38,14 +46,6 @@ def evaluate():
         def restore_fn(session):
             """A Saver function to later restore our model."""
             return saver.restore(session, checkpoint_file)
-
-        # Define the loss functions and get the total loss
-        predictions = model.grasp_net(images, is_training=False)
-        loss = model.custom_loss_function(predictions, theta_labels, class_labels)
-        tf.losses.add_loss(loss)
-        total_loss_op = tf.losses.get_total_loss()
-        # Compute number of correctness
-        num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
 
         # Define a supervisor for running a managed session
         sv = tf.train.Supervisor(summary_op=None, init_fn=restore_fn)
