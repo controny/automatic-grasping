@@ -1,15 +1,11 @@
 # coding=utf-8
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-import tensorflow.contrib.slim.nets as nets
-
-
-vgg = nets.vgg
 
 
 def grasp_net(images, is_training=True):
     """
-    A net taking advantage of pretrained VGG16.
+    A net taking advantage of AlexNet V2.
 
     :param images: size of 224x224
     :param is_training: whether training or not
@@ -17,34 +13,41 @@ def grasp_net(images, is_training=True):
     """
     dropout_keep_prob = 0.7
     num_classes = 18
-    with tf.variable_scope('vgg_16', 'vgg_16', [images]) as sc:
+    with tf.variable_scope('alexnet_v2', 'alexnet_v2', [images]) as sc:
+        end_points_collection = sc.original_name_scope + '_end_points'
         # Collect outputs for conv2d, fully_connected and max_pool2d.
         with slim.arg_scope(
-                [slim.conv2d, slim.fully_connected, slim.max_pool2d]):
-            net = slim.repeat(
-                images, 2, slim.conv2d, 64, [3, 3], scope='conv1')
-            net = slim.max_pool2d(net, [2, 2], scope='pool1')
-            net = slim.repeat(net, 2, slim.conv2d, 128, [3, 3], scope='conv2')
-            net = slim.max_pool2d(net, [2, 2], scope='pool2')
-            net = slim.repeat(net, 3, slim.conv2d, 256, [3, 3], scope='conv3')
-            net = slim.max_pool2d(net, [2, 2], scope='pool3')
-            net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv4')
-            net = slim.max_pool2d(net, [2, 2], scope='pool4')
-            net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv5')
-            net = slim.max_pool2d(net, [2, 2], scope='pool5')
-            # Use conv2d instead of fully_connected layers.
-            net = slim.conv2d(net, 4096, [7, 7], padding='VALID', scope='fc6')
-            net = slim.dropout(
-                net, dropout_keep_prob, is_training=is_training, scope='dropout6')
-            net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
-            net = slim.dropout(
-                net, dropout_keep_prob, is_training=is_training, scope='dropout7')
+                [slim.conv2d, slim.fully_connected, slim.max_pool2d],
+                outputs_collections=[end_points_collection]):
             net = slim.conv2d(
-                net,
-                num_classes, [1, 1],
-                activation_fn=tf.sigmoid,
-                normalizer_fn=None,
-                scope='fc8')
+                images, 64, [11, 11], 4, padding='VALID', scope='conv1')
+            net = slim.max_pool2d(net, [3, 3], 2, scope='pool1')
+            net = slim.conv2d(net, 192, [5, 5], scope='conv2')
+            net = slim.max_pool2d(net, [3, 3], 2, scope='pool2')
+            net = slim.conv2d(net, 384, [3, 3], scope='conv3')
+            net = slim.conv2d(net, 384, [3, 3], scope='conv4')
+            net = slim.conv2d(net, 256, [3, 3], scope='conv5')
+            net = slim.max_pool2d(net, [3, 3], 2, scope='pool5')
+
+            # Use conv2d instead of fully_connected slim.
+            with slim.arg_scope(
+                    [slim.conv2d],
+                    weights_initializer=tf.truncated_normal_initializer(0.0, 0.005),
+                    biases_initializer=tf.constant_initializer(0.1)):
+                net = slim.conv2d(net, 4096, [5, 5], padding='VALID', scope='fc6')
+                net = slim.dropout(
+                    net, dropout_keep_prob, is_training=is_training, scope='dropout6')
+                net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
+                net = slim.dropout(
+                    net, dropout_keep_prob, is_training=is_training, scope='dropout7')
+                net = slim.conv2d(
+                    net,
+                    num_classes, [1, 1],
+                    activation_fn=tf.sigmoid,
+                    normalizer_fn=None,
+                    biases_initializer=tf.zeros_initializer(),
+                    scope='fc8')
+
             net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
 
     return net

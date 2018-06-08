@@ -26,7 +26,7 @@ flags.DEFINE_integer('num_epochs', 1, 'number of epochs')
 flags.DEFINE_integer('max_steps', 2000, 'number of max training steps')
 flags.DEFINE_integer('logging_gap', 50, 'logging gap')
 flags.DEFINE_integer('decay_steps', 1000, 'number of steps before decay')
-flags.DEFINE_float('learning_rate', 0.0001, 'initial learning rate')
+flags.DEFINE_float('learning_rate', 0.001, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.95, 'learning rate decay factor')
 
 FLAGS = flags.FLAGS
@@ -91,14 +91,16 @@ def train():
         tf.summary.scalar('training/loss: ', total_loss)
         summary_op = tf.summary.merge_all()
 
-        # Restore pre-trained model
-        variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8',
-                                                                      'validation'])
-        # print(*variables_to_restore, sep='\n')
-        saver = tf.train.Saver(variables_to_restore)
-
         def restore_fn(session):
             """A Saver function to later restore the model."""
+            # Not to restore
+            return None
+            # Restore pre-trained model
+            variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8',
+                                                                          'validation'])
+            # print(*variables_to_restore, sep='\n')
+            saver = tf.train.Saver(variables_to_restore)
+
             return saver.restore(session, FLAGS.pretrained_model_path)
 
         # Define a supervisor for running a managed session
@@ -113,11 +115,12 @@ def train():
 
                 start_time = time.time()
                 _, global_step_count, training_loss = sess.run([train_op, global_step, total_loss])
-                print('global step %s: training loss = %.4f' % (global_step_count, training_loss))
                 time_elapsed = time.time() - start_time
 
                 # Log the summaries every constant steps
                 if (global_step_count + 1) % FLAGS.logging_gap == 0:
+                    print('global step %s: training loss = %.4f' % (global_step_count, training_loss))
+
                     loss, num_correctness, summaries = sess.run([validation_loss_op, num_correctness_op, summary_op])
                     accuracy = 1.0 * num_correctness / FLAGS.validation_batch_size
                     print('global step %s: loss = %.4f, accuracy = %.4f (%d / %d) with (%.2f sec/step)'
