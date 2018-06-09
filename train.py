@@ -28,7 +28,6 @@ flags.DEFINE_integer('logging_gap', 50, 'logging gap')
 flags.DEFINE_integer('decay_steps', 5000, 'number of steps before decay')
 flags.DEFINE_float('learning_rate', 0.01, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.95, 'learning rate decay factor')
-flags.DEFINE_float('lmbda', 0.005, 'lambda parameter for regularization')
 
 FLAGS = flags.FLAGS
 
@@ -56,7 +55,7 @@ def train():
             staircase=True)
 
         # Define the loss functions and get the total loss
-        training_pred = model.grasp_net(training_images, lmbda=FLAGS.lmbda)
+        training_pred = model.grasp_net(training_images)
         training_loss = model.custom_loss_function(
             training_pred, training_theta_labels, training_class_labels)
         tf.losses.add_loss(training_loss)

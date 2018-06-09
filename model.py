@@ -3,9 +3,9 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 
-def grasp_net(images, is_training=True, lmbda=0.0):
+def grasp_net(images, is_training=True):
     num_classes = 18
-    return alexnet_v2(images, is_training, num_classes, lmbda)
+    return alexnet_v2(images, is_training, num_classes)
     # return vgg_16(images, is_training, num_classes)
 
 
@@ -52,14 +52,13 @@ def vgg_16(images, is_training, num_classes):
             return net
 
 
-def alexnet_v2(images, is_training, num_classes, lmbda):
+def alexnet_v2(images, is_training, num_classes):
     """
     A net taking advantage of AlexNet V2.
 
     :param images: size of 224x224
     :param is_training: whether training or not
     :param num_classes: number of final classes
-    :param lmbda: lambda parameter for regularization
     :return: logits with shape of [batch_size, 18]
     """
     dropout_keep_prob = 0.5
@@ -83,7 +82,6 @@ def alexnet_v2(images, is_training, num_classes, lmbda):
             with slim.arg_scope(
                     [slim.conv2d],
                     weights_initializer=tf.truncated_normal_initializer(0.0, 0.005),
-                    weights_regularizer=slim.l2_regularizer(lmbda),
                     biases_initializer=tf.constant_initializer(0.1)):
                 net = slim.conv2d(net, 4096, [5, 5], padding='VALID', scope='fc6')
                 net = slim.dropout(
