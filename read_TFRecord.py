@@ -104,7 +104,7 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
         # change shape
         class_labels = tf.reshape(class_labels, [-1, class_label_size])
         theta_labels = tf.one_hot(theta_labels, theta_label_size)
-        return images, class_labels, theta_labels, Train_n_num_samples
+        return images, class_labels, theta_labels, Train_n_num_samples * 2
 
     if datasetName == "Validation":
         dataset, num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Validation')
@@ -132,7 +132,7 @@ FLAGS = flags.FLAGS
 
 def main():
     with tf.Graph().as_default():
-        images, class_labels, theta_labels, num_samples = get_batch_data(dataset_dir = FLAGS.source_dir,
+        images, class_labels, theta_labels, num_samples = get_batch_data(#dataset_dir = FLAGS.source_dir,
                                                               datasetName = FLAGS.set, 
                                                               batch_size = 128, 
                                                               image_size = 224)
