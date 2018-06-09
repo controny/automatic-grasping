@@ -126,7 +126,7 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
     
 
 flags = tf.app.flags
-flags.DEFINE_string('source_dir', "/home/shixun7/TFRecord/", 'String: Your TFRecord directory')
+flags.DEFINE_string('source_dir', "/home/shixun7/vrepTFRecord/", 'String: Your TFRecord directory')
 flags.DEFINE_string('set', "Train", 'String: Your TFRecord directory')
 FLAGS = flags.FLAGS
 

@@ -4,15 +4,64 @@ import tensorflow.contrib.slim as slim
 
 
 def grasp_net(images, is_training=True):
+    num_classes = 18
+    return alexnet_v2(images, is_training, num_classes)
+    # return vgg_16(images, is_training, num_classes)
+
+
+def vgg_16(images, is_training, num_classes):
+    """
+    A net taking advantage of VGG16
+
+    :param images: size of 224x224
+    :param is_training: whether training or not
+    :param num_classes: number of final classes
+    :return: logits with shape of [batch_size, 18]
+    """
+    with tf.variable_scope('vgg_16', 'vgg_16', [images], reuse=tf.AUTO_REUSE) as sc:
+        dropout_keep_prob = 0.5
+        # Collect outputs for conv2d, fully_connected and max_pool2d.
+        with slim.arg_scope(
+                [slim.conv2d, slim.fully_connected, slim.max_pool2d]):
+            net = slim.repeat(
+                images, 2, slim.conv2d, 64, [3, 3], scope='conv1')
+            net = slim.max_pool2d(net, [2, 2], scope='pool1')
+            net = slim.repeat(net, 2, slim.conv2d, 128, [3, 3], scope='conv2')
+            net = slim.max_pool2d(net, [2, 2], scope='pool2')
+            net = slim.repeat(net, 3, slim.conv2d, 256, [3, 3], scope='conv3')
+            net = slim.max_pool2d(net, [2, 2], scope='pool3')
+            net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv4')
+            net = slim.max_pool2d(net, [2, 2], scope='pool4')
+            net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv5')
+            net = slim.max_pool2d(net, [2, 2], scope='pool5')
+            # Use conv2d instead of fully_connected slim.
+            net = slim.conv2d(net, 4096, [7, 7], padding='VALID', scope='fc6')
+            net = slim.dropout(
+                net, dropout_keep_prob, is_training=is_training, scope='dropout6')
+            net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
+            net = slim.dropout(
+                net, dropout_keep_prob, is_training=is_training, scope='dropout7')
+            net = slim.conv2d(
+                net,
+                num_classes, [1, 1],
+                activation_fn=tf.sigmoid,
+                normalizer_fn=None,
+                scope='fc8')
+            net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
+
+            return net
+
+
+def alexnet_v2(images, is_training, num_classes):
     """
     A net taking advantage of AlexNet V2.
 
     :param images: size of 224x224
     :param is_training: whether training or not
+    :param num_classes: number of final classes
     :return: logits with shape of [batch_size, 18]
     """
-    dropout_keep_prob = 0.7
-    num_classes = 18
+    dropout_keep_prob = 0.5
     with tf.variable_scope('alexnet_v2', 'alexnet_v2', [images], reuse=tf.AUTO_REUSE) as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
         # Collect outputs for conv2d, fully_connected and max_pool2d.
