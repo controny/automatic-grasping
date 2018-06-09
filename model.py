@@ -13,7 +13,7 @@ def grasp_net(images, is_training=True):
     """
     dropout_keep_prob = 0.7
     num_classes = 18
-    with tf.variable_scope('alexnet_v2', 'alexnet_v2', [images]) as sc:
+    with tf.variable_scope('alexnet_v2', 'alexnet_v2', [images], reuse=tf.AUTO_REUSE) as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
         # Collect outputs for conv2d, fully_connected and max_pool2d.
         with slim.arg_scope(

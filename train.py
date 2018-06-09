@@ -61,14 +61,13 @@ def train():
         tf.losses.add_loss(training_loss)
         total_loss = tf.losses.get_total_loss()
 
-        with tf.variable_scope('validation'):
-            # Compute loss for validation
-            validation_pred = model.grasp_net(validation_images, is_training=False)
-            validation_loss_op = model.custom_loss_function(
-                validation_pred, validation_theta_labels, validation_class_labels)
-            # Compute number of correctness
-            num_correctness_op = model.get_num_correctness(
-                validation_pred, validation_theta_labels, validation_class_labels)
+        # Compute loss for validation
+        validation_pred = model.grasp_net(validation_images, is_training=False)
+        validation_loss_op = model.custom_loss_function(
+            validation_pred, validation_theta_labels, validation_class_labels)
+        # Compute number of correctness
+        num_correctness_op = model.get_num_correctness(
+            validation_pred, validation_theta_labels, validation_class_labels)
 
         # Set optimizer
         optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -95,6 +94,7 @@ def train():
             """A Saver function to later restore the model."""
             # Not to restore
             return None
+
             # Restore pre-trained model
             variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8',
                                                                           'validation'])
@@ -123,9 +123,9 @@ def train():
 
                     loss, num_correctness, summaries = sess.run([validation_loss_op, num_correctness_op, summary_op])
                     accuracy = 1.0 * num_correctness / FLAGS.validation_batch_size
-                    print('global step %s: loss = %.4f, accuracy = %.4f (%d / %d) with (%.2f sec/step)'
-                          % (global_step_count, loss,
-                             accuracy,  num_correctness, FLAGS.validation_batch_size, time_elapsed))
+                    print('global step %s: validation loss = %.4f, accuracy = %.4f (%d / %d) with (%.2f sec/step)' %
+                          (global_step_count, loss,
+                           accuracy, num_correctness, FLAGS.validation_batch_size, time_elapsed))
                     sv.summary_computed(sess, summaries)
 
 
