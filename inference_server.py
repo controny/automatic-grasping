@@ -42,8 +42,7 @@ def upload_file():
     image = Image.open(image)
     image = np.expand_dims(np.asarray(image), 0)
 
-    with slim.arg_scope(model.alexnet_v2_arg_scope()):
-        result = prediction.eval(feed_dict={x: image})
+    result = prediction.eval(feed_dict={x: image})
     result = np.argmax(result)
 
     return result

@@ -1,12 +1,23 @@
 # coding=utf-8
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
+import tensorflow.contrib.slim.nets as nets
+
+resnet = nets.resnet_v2
 
 
-def grasp_net(images, is_training=True):
+def grasp_net(images, is_training=True, lmbda=0.0):
     num_classes = 18
-    return alexnet_v2(images, is_training, num_classes)
-    # return vgg_16(images, is_training, num_classes)
+    # with slim.arg_scope(alexnet_v2_arg_scope(lmbda)):
+    #     return alexnet_v2(images, is_training, num_classes)
+
+    # Resnet
+    with slim.arg_scope(resnet.resnet_arg_scope()):
+        net, _ = resnet.resnet_v2_50(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
+    with tf.variable_scope('extra', reuse=tf.AUTO_REUSE):
+        net = slim.fully_connected(net, num_classes, tf.sigmoid)
+        net = tf.squeeze(net)
+    return net
 
 
 def vgg_16(images, is_training, num_classes):

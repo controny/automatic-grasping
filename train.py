@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-import time
 import os
 import shutil
 import model
@@ -17,7 +16,7 @@ flags = tf.flags
 # File paths
 flags.DEFINE_string('log_dir', '../log/', 'log directory')
 flags.DEFINE_string('model_name', 'model', 'model name')
-flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 'pretrained mode path')
+flags.DEFINE_string('pretrained_model_path', '', 'pretrained mode path')
 
 # Training parameters
 flags.DEFINE_integer('batch_size', 64, 'batch size')
@@ -29,6 +28,8 @@ flags.DEFINE_integer('decay_steps', 5000, 'number of steps before decay')
 flags.DEFINE_float('learning_rate', 0.01, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.95, 'learning rate decay factor')
 flags.DEFINE_float('lmbda', 0.0005, 'lambda parameter for regularization')
+
+flags.DEFINE_integer('gpu_id', 0, 'the id of gpu to use')
 
 FLAGS = flags.FLAGS
 
@@ -55,30 +56,42 @@ def train():
             decay_rate=FLAGS.learning_rate_decay_factor,
             staircase=True)
 
-        # Define the loss functions and get the total loss
-        with slim.arg_scope(model.alexnet_v2_arg_scope(FLAGS.lmbda)):
-            training_pred = model.grasp_net(training_images)
-        training_loss = model.custom_loss_function(
-            training_pred, training_theta_labels, training_class_labels)
-        tf.losses.add_loss(training_loss)
-        total_loss = tf.losses.get_total_loss()
+        with tf.device('/device:GPU:' + str(FLAGS.gpu_id)):
 
-        # Compute loss for validation
-        with slim.arg_scope(model.alexnet_v2_arg_scope()):
+            # Define the loss functions and get the total loss
+            training_pred = model.grasp_net(training_images, lmbda=FLAGS.lmbda)
+            training_loss = model.custom_loss_function(
+                training_pred, training_theta_labels, training_class_labels)
+            tf.losses.add_loss(training_loss)
+            total_loss = tf.losses.get_total_loss()
+            training_num_correctness_op = model.get_num_correctness(
+                training_pred, training_theta_labels, training_class_labels)
+            training_accuracy_op = tf.cast(training_num_correctness_op, tf.float32) / FLAGS.batch_size
+
+            # Compute loss for validation
             validation_pred = model.grasp_net(validation_images, is_training=False)
-        validation_loss_op = model.custom_loss_function(
-            validation_pred, validation_theta_labels, validation_class_labels)
-        # Compute number of correctness
-        num_correctness_op = model.get_num_correctness(
-            validation_pred, validation_theta_labels, validation_class_labels)
-        accuracy_op = 1.0 * tf.cast(num_correctness_op, tf.float32) / FLAGS.validation_batch_size
+            validation_loss_op = model.custom_loss_function(
+                validation_pred, validation_theta_labels, validation_class_labels)
+            # Compute number of correctness
+            validation_num_correctness_op = model.get_num_correctness(
+                validation_pred, validation_theta_labels, validation_class_labels)
+            accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.validation_batch_size
 
-        # Set optimizer
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+            # Set optimizer
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 
-        # Create_train_op to ensure that each time we ask for the loss,
-        # the updates are run and the gradients being computed are applied too
-        train_op = slim.learning.create_train_op(total_loss, optimizer)
+            # Create_train_op to ensure that each time we ask for the loss,
+            # the updates are run and the gradients being computed are applied too
+            train_op = slim.learning.create_train_op(total_loss, optimizer)
+
+        # Set summary
+        tf.summary.scalar('learning_rate', learning_rate)
+        tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.validation_batch_size)
+        tf.summary.scalar('validation/loss: ', validation_loss_op)
+        tf.summary.scalar('validation/accuracy: ', accuracy_op)
+        tf.summary.scalar('training/loss: ', total_loss)
+        tf.summary.scalar('training/accuracy: ', training_accuracy_op)
+        summary_op = tf.summary.merge_all()
 
         # Where model logs are stored
         model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
@@ -87,49 +100,46 @@ def train():
             shutil.rmtree(model_log_dir)
         os.mkdir(model_log_dir)
 
-        # Set summary
-        tf.summary.scalar('learning_rate', learning_rate)
-        tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.validation_batch_size)
-        tf.summary.scalar('validation/loss: ', validation_loss_op)
-        tf.summary.scalar('validation/accuracy: ', accuracy_op)
-        tf.summary.scalar('training/loss: ', total_loss)
-        summary_op = tf.summary.merge_all()
-
-        # # Restore VGG16 pre-trained model
-        # variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8'])
-        #
-        # # print(*variables_to_restore, sep='\n')
-        # saver = tf.train.Saver(variables_to_restore)
+        if FLAGS.pretrained_model_path != '':
+            # Restore resnet pre-trained model
+            variables_to_restore = slim.get_variables_to_restore(
+                exclude=['resnet_v2_50/logits', 'global_step', 'extra'])
+            print(*variables_to_restore, sep='\n')
+            saver = tf.train.Saver(variables_to_restore)
 
         def restore_fn(session):
             """A Saver function to later restore the model."""
-            # Not to restore
-            return None
-
-            # Restore pre-trained model
-            return saver.restore(session, FLAGS.pretrained_model_path)
+            if FLAGS.pretrained_model_path != '':
+                # Restore pre-trained model
+                return saver.restore(session, FLAGS.pretrained_model_path)
+            else:
+                # Not to restore
+                return None
 
         # Define a supervisor for running a managed session
         sv = tf.train.Supervisor(logdir=model_log_dir, summary_op=None, init_fn=restore_fn)
 
         # Run the managed session
-        with sv.managed_session() as sess:
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        config.allow_soft_placement = True
+        with sv.managed_session(config=config) as sess:
             for step in range(min(FLAGS.max_steps, num_steps_per_epoch * FLAGS.num_epochs)):
                 # At the start of every epoch, show the vital information:
                 if step % num_steps_per_epoch == 0:
                     print('------Epoch %d/%d-----' % (step/num_steps_per_epoch + 1, FLAGS.num_epochs))
 
-                start_time = time.time()
-                _, global_step_count, training_loss = sess.run([train_op, global_step, total_loss])
-                time_elapsed = time.time() - start_time
+                _, global_step_count, training_loss, training_accuracy =\
+                    sess.run([train_op, global_step, total_loss, training_accuracy_op])
 
                 # Log the summaries every constant steps
                 if (global_step_count + 1) % FLAGS.logging_gap == 0:
-                    print('global step %s: training loss = %.4f' % (global_step_count, training_loss))
+                    print('global step %s: training loss = %.4f, training accuracy = %.4f' %
+                          (global_step_count, training_loss, training_accuracy))
 
                     loss, accuracy, summaries = sess.run([validation_loss_op, accuracy_op, summary_op])
-                    print('global step %s: validation loss = %.4f, accuracy = %.4f with (%.2f sec/step)' %
-                          (global_step_count, loss, accuracy, time_elapsed))
+                    print('global step %s: validation loss = %.4f, validation accuracy = %.4f' %
+                          (global_step_count, loss, accuracy))
                     sv.summary_computed(sess, summaries)
 
 
