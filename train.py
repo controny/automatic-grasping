@@ -114,7 +114,9 @@ def train():
         sv = tf.train.Supervisor(logdir=model_log_dir, summary_op=None, init_fn=restore_fn)
 
         # Run the managed session
-        with sv.managed_session() as sess:
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with sv.managed_session(config=config) as sess:
             for step in range(min(FLAGS.max_steps, num_steps_per_epoch * FLAGS.num_epochs)):
                 # At the start of every epoch, show the vital information:
                 if step % num_steps_per_epoch == 0:
