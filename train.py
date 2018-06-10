@@ -29,6 +29,8 @@ flags.DEFINE_float('learning_rate', 0.01, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.95, 'learning rate decay factor')
 flags.DEFINE_float('lmbda', 0.0005, 'lambda parameter for regularization')
 
+flags.DEFINE_integer('gpu_id', 0, 'the id of gpu to use')
+
 FLAGS = flags.FLAGS
 
 
@@ -54,38 +56,33 @@ def train():
             decay_rate=FLAGS.learning_rate_decay_factor,
             staircase=True)
 
-        # Define the loss functions and get the total loss
-        training_pred = model.grasp_net(training_images, lmbda=FLAGS.lmbda)
-        training_loss = model.custom_loss_function(
-            training_pred, training_theta_labels, training_class_labels)
-        tf.losses.add_loss(training_loss)
-        total_loss = tf.losses.get_total_loss()
-        training_num_correctness_op = model.get_num_correctness(
-            training_pred, training_theta_labels, training_class_labels)
-        training_accuracy_op = tf.cast(training_num_correctness_op, tf.float32) / FLAGS.batch_size
+        with tf.device('/device:GPU:' + str(FLAGS.gpu_id)):
 
-        # Compute loss for validation
-        validation_pred = model.grasp_net(validation_images, is_training=False)
-        validation_loss_op = model.custom_loss_function(
-            validation_pred, validation_theta_labels, validation_class_labels)
-        # Compute number of correctness
-        validation_num_correctness_op = model.get_num_correctness(
-            validation_pred, validation_theta_labels, validation_class_labels)
-        accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.validation_batch_size
+            # Define the loss functions and get the total loss
+            training_pred = model.grasp_net(training_images, lmbda=FLAGS.lmbda)
+            training_loss = model.custom_loss_function(
+                training_pred, training_theta_labels, training_class_labels)
+            tf.losses.add_loss(training_loss)
+            total_loss = tf.losses.get_total_loss()
+            training_num_correctness_op = model.get_num_correctness(
+                training_pred, training_theta_labels, training_class_labels)
+            training_accuracy_op = tf.cast(training_num_correctness_op, tf.float32) / FLAGS.batch_size
 
-        # Set optimizer
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+            # Compute loss for validation
+            validation_pred = model.grasp_net(validation_images, is_training=False)
+            validation_loss_op = model.custom_loss_function(
+                validation_pred, validation_theta_labels, validation_class_labels)
+            # Compute number of correctness
+            validation_num_correctness_op = model.get_num_correctness(
+                validation_pred, validation_theta_labels, validation_class_labels)
+            accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.validation_batch_size
 
-        # Create_train_op to ensure that each time we ask for the loss,
-        # the updates are run and the gradients being computed are applied too
-        train_op = slim.learning.create_train_op(total_loss, optimizer)
+            # Set optimizer
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 
-        # Where model logs are stored
-        model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
-        # Make sure to overwrite the folder
-        if os.path.exists(model_log_dir):
-            shutil.rmtree(model_log_dir)
-        os.mkdir(model_log_dir)
+            # Create_train_op to ensure that each time we ask for the loss,
+            # the updates are run and the gradients being computed are applied too
+            train_op = slim.learning.create_train_op(total_loss, optimizer)
 
         # Set summary
         tf.summary.scalar('learning_rate', learning_rate)
@@ -96,10 +93,18 @@ def train():
         tf.summary.scalar('training/accuracy: ', training_accuracy_op)
         summary_op = tf.summary.merge_all()
 
+        # Where model logs are stored
+        model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
+        # Make sure to overwrite the folder
+        if os.path.exists(model_log_dir):
+            shutil.rmtree(model_log_dir)
+        os.mkdir(model_log_dir)
+
         if FLAGS.pretrained_model_path != '':
             # Restore resnet pre-trained model
-            variables_to_restore = slim.get_variables_to_restore(exclude=['resnet_v2_50/logits', 'extra'])
-            # print(*variables_to_restore, sep='\n')
+            variables_to_restore = slim.get_variables_to_restore(
+                exclude=['resnet_v2_50/logits', 'global_step', 'extra'])
+            print(*variables_to_restore, sep='\n')
             saver = tf.train.Saver(variables_to_restore)
 
         def restore_fn(session):
@@ -117,6 +122,7 @@ def train():
         # Run the managed session
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
+        config.allow_soft_placement = True
         with sv.managed_session(config=config) as sess:
             for step in range(min(FLAGS.max_steps, num_steps_per_epoch * FLAGS.num_epochs)):
                 # At the start of every epoch, show the vital information:
