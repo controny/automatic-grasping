@@ -34,7 +34,7 @@ def evaluate():
         tf.losses.add_loss(loss)
         total_loss_op = tf.losses.get_total_loss()
         # Compute number of correctness
-        num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
+        validation_num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
 
         # Where model logs are stored
         model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
@@ -57,7 +57,7 @@ def evaluate():
         # Run the managed session
         with sv.managed_session() as sess:
             for step in range(num_steps_per_epoch * FLAGS.num_epochs):
-                current_loss, num_correctness = sess.run([total_loss_op, num_correctness_op])
+                current_loss, num_correctness = sess.run([total_loss_op, validation_num_correctness_op])
                 accuracy = 1.0 * num_correctness / FLAGS.batch_size
                 print('Step %d: loss = %.4f, accuracy = %.4f (%d / %d)' %
                       (step, current_loss, accuracy, num_correctness, FLAGS.batch_size))

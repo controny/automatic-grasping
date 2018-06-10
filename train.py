@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-import time
 import os
 import shutil
 import model
@@ -62,6 +61,9 @@ def train():
             training_pred, training_theta_labels, training_class_labels)
         tf.losses.add_loss(training_loss)
         total_loss = tf.losses.get_total_loss()
+        training_num_correctness_op = model.get_num_correctness(
+            training_pred, training_theta_labels, training_class_labels)
+        training_accuracy_op = tf.cast(training_num_correctness_op, tf.float32) / FLAGS.batch_size
 
         # Compute loss for validation
         with slim.arg_scope(model.alexnet_v2_arg_scope()):
@@ -69,9 +71,9 @@ def train():
         validation_loss_op = model.custom_loss_function(
             validation_pred, validation_theta_labels, validation_class_labels)
         # Compute number of correctness
-        num_correctness_op = model.get_num_correctness(
+        validation_num_correctness_op = model.get_num_correctness(
             validation_pred, validation_theta_labels, validation_class_labels)
-        accuracy_op = 1.0 * tf.cast(num_correctness_op, tf.float32) / FLAGS.validation_batch_size
+        accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.validation_batch_size
 
         # Set optimizer
         optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -93,6 +95,7 @@ def train():
         tf.summary.scalar('validation/loss: ', validation_loss_op)
         tf.summary.scalar('validation/accuracy: ', accuracy_op)
         tf.summary.scalar('training/loss: ', total_loss)
+        tf.summary.scalar('training/accuracy: ', training_accuracy_op)
         summary_op = tf.summary.merge_all()
 
         # # Restore VGG16 pre-trained model
@@ -119,17 +122,17 @@ def train():
                 if step % num_steps_per_epoch == 0:
                     print('------Epoch %d/%d-----' % (step/num_steps_per_epoch + 1, FLAGS.num_epochs))
 
-                start_time = time.time()
-                _, global_step_count, training_loss = sess.run([train_op, global_step, total_loss])
-                time_elapsed = time.time() - start_time
+                _, global_step_count, training_loss, training_accuracy =\
+                    sess.run([train_op, global_step, total_loss, training_accuracy_op])
 
                 # Log the summaries every constant steps
                 if (global_step_count + 1) % FLAGS.logging_gap == 0:
-                    print('global step %s: training loss = %.4f' % (global_step_count, training_loss))
+                    print('global step %s: training loss = %.4f, training accuracy = %.4f' %
+                          (global_step_count, training_loss, training_accuracy))
 
                     loss, accuracy, summaries = sess.run([validation_loss_op, accuracy_op, summary_op])
-                    print('global step %s: validation loss = %.4f, accuracy = %.4f with (%.2f sec/step)' %
-                          (global_step_count, loss, accuracy, time_elapsed))
+                    print('global step %s: validation loss = %.4f, validation accuracy = %.4f' %
+                          (global_step_count, loss, accuracy))
                     sv.summary_computed(sess, summaries)
 
 
