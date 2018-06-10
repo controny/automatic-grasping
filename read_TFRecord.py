@@ -70,7 +70,7 @@ def load_batch(dataset,
 
     return images, class_labels, theta_labels
 
-def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
+def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/vrepTFRecord_v2/"):
     num_readers = 2
     num_preprocessing_threads = 2
     shuffle = True
@@ -104,7 +104,7 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
         # change shape
         class_labels = tf.reshape(class_labels, [-1, class_label_size])
         theta_labels = tf.one_hot(theta_labels, theta_label_size)
-        return images, class_labels, theta_labels, Train_n_num_samples * 2
+        return images, class_labels, theta_labels, Train_n_num_samples
 
     if datasetName == "Validation":
         dataset, num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Validation')
@@ -126,7 +126,7 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
     
 
 flags = tf.app.flags
-flags.DEFINE_string('source_dir', "/home/shixun7/vrepTFRecord/", 'String: Your TFRecord directory')
+flags.DEFINE_string('source_dir', "/home/shixun7/vrepTFRecord_v2/", 'String: Your TFRecord directory')
 flags.DEFINE_string('set', "Train", 'String: Your TFRecord directory')
 FLAGS = flags.FLAGS
 

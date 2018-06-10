@@ -19,7 +19,7 @@ flags.DEFINE_string('model_name', 'model', 'model name')
 flags.DEFINE_string('pretrained_model_path', '', 'pretrained mode path')
 
 # Training parameters
-flags.DEFINE_integer('batch_size', 64, 'batch size')
+flags.DEFINE_integer('batch_size', 128, 'batch size')
 flags.DEFINE_integer('validation_batch_size', 100, 'batch size for validation')
 flags.DEFINE_integer('num_epochs', 1, 'number of epochs')
 flags.DEFINE_integer('max_steps', 20000, 'number of max training steps')
@@ -39,11 +39,11 @@ def train():
 
     with tf.Graph().as_default():
         training_images, training_class_labels, training_theta_labels, num_training_samples =\
-            read_TFRecord.get_batch_data('Train', FLAGS.batch_size)
+            read_TFRecord.get_batch_data('Train', FLAGS.batch_size, dataset_dir = "/home/shixun7/vrepTFRecord_v2/")
         validation_images, validation_class_labels, validation_theta_labels, num_validation_samples = \
-            read_TFRecord.get_batch_data('Validation', FLAGS.validation_batch_size)
+            read_TFRecord.get_batch_data('Validation', FLAGS.validation_batch_size, dataset_dir = "/home/shixun7/vrepTFRecord_v2/")
 
-        num_steps_per_epoch = int(num_training_samples / FLAGS.batch_size)
+        num_steps_per_epoch = int(num_training_samples / (FLAGS.batch_size/2))
 
         # Create the global step for monitoring the learning_rate and training.
         global_step = tf.train.get_or_create_global_step()
