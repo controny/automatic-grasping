@@ -1,12 +1,15 @@
 # coding=utf-8
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
+import tensorflow.contrib.slim.nets as nets
+
+resnet = nets.resnet_v2
 
 
-def grasp_net(images, is_training=True):
+def grasp_net(images, is_training=True, lmbda=0.0):
     num_classes = 18
-    return alexnet_v2(images, is_training, num_classes)
-    # return vgg_16(images, is_training, num_classes)
+    with slim.arg_scope(alexnet_v2_arg_scope(lmbda)):
+        return alexnet_v2(images, is_training, num_classes)
 
 
 def vgg_16(images, is_training, num_classes):

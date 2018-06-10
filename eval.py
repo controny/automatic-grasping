@@ -28,8 +28,7 @@ def evaluate():
         num_steps_per_epoch = int(num_samples / FLAGS.batch_size)
 
         # Define the loss functions and get the total loss
-        with slim.arg_scope(model.alexnet_v2_arg_scope()):
-            predictions = model.grasp_net(images, is_training=False)
+        predictions = model.grasp_net(images, is_training=False)
         loss = model.custom_loss_function(predictions, theta_labels, class_labels)
         tf.losses.add_loss(loss)
         total_loss_op = tf.losses.get_total_loss()

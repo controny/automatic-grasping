@@ -55,8 +55,7 @@ def train():
             staircase=True)
 
         # Define the loss functions and get the total loss
-        with slim.arg_scope(model.alexnet_v2_arg_scope(FLAGS.lmbda)):
-            training_pred = model.grasp_net(training_images)
+        training_pred = model.grasp_net(training_images, lmbda=FLAGS.lmbda)
         training_loss = model.custom_loss_function(
             training_pred, training_theta_labels, training_class_labels)
         tf.losses.add_loss(training_loss)
@@ -66,8 +65,7 @@ def train():
         training_accuracy_op = tf.cast(training_num_correctness_op, tf.float32) / FLAGS.batch_size
 
         # Compute loss for validation
-        with slim.arg_scope(model.alexnet_v2_arg_scope()):
-            validation_pred = model.grasp_net(validation_images, is_training=False)
+        validation_pred = model.grasp_net(validation_images, is_training=False)
         validation_loss_op = model.custom_loss_function(
             validation_pred, validation_theta_labels, validation_class_labels)
         # Compute number of correctness
