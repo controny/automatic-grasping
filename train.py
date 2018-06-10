@@ -16,7 +16,7 @@ flags = tf.flags
 # File paths
 flags.DEFINE_string('log_dir', '../log/', 'log directory')
 flags.DEFINE_string('model_name', 'model', 'model name')
-flags.DEFINE_string('pretrained_model_path', '../pretrained_model/vgg_16.ckpt', 'pretrained mode path')
+flags.DEFINE_string('pretrained_model_path', '', 'pretrained mode path')
 
 # Training parameters
 flags.DEFINE_integer('batch_size', 64, 'batch size')
@@ -96,19 +96,20 @@ def train():
         tf.summary.scalar('training/accuracy: ', training_accuracy_op)
         summary_op = tf.summary.merge_all()
 
-        # # Restore VGG16 pre-trained model
-        # variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8'])
-        #
-        # # print(*variables_to_restore, sep='\n')
-        # saver = tf.train.Saver(variables_to_restore)
+        if FLAGS.pretrained_model_path != '':
+            # Restore resnet pre-trained model
+            variables_to_restore = slim.get_variables_to_restore(exclude=['resnet_v2_50/logits', 'extra'])
+            # print(*variables_to_restore, sep='\n')
+            saver = tf.train.Saver(variables_to_restore)
 
         def restore_fn(session):
             """A Saver function to later restore the model."""
-            # Not to restore
-            return None
-
-            # Restore pre-trained model
-            return saver.restore(session, FLAGS.pretrained_model_path)
+            if FLAGS.pretrained_model_path != '':
+                # Restore pre-trained model
+                return saver.restore(session, FLAGS.pretrained_model_path)
+            else:
+                # Not to restore
+                return None
 
         # Define a supervisor for running a managed session
         sv = tf.train.Supervisor(logdir=model_log_dir, summary_op=None, init_fn=restore_fn)
