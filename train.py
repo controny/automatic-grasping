@@ -28,6 +28,7 @@ flags.DEFINE_integer('logging_gap', 50, 'logging gap')
 flags.DEFINE_integer('decay_steps', 5000, 'number of steps before decay')
 flags.DEFINE_float('learning_rate', 0.01, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.95, 'learning rate decay factor')
+flags.DEFINE_float('lmbda', 0.0005, 'lambda parameter for regularization')
 
 FLAGS = flags.FLAGS
 
@@ -55,14 +56,16 @@ def train():
             staircase=True)
 
         # Define the loss functions and get the total loss
-        training_pred = model.grasp_net(training_images)
+        with slim.arg_scope(model.alexnet_v2_arg_scope(FLAGS.lmbda)):
+            training_pred = model.grasp_net(training_images)
         training_loss = model.custom_loss_function(
             training_pred, training_theta_labels, training_class_labels)
         tf.losses.add_loss(training_loss)
         total_loss = tf.losses.get_total_loss()
 
         # Compute loss for validation
-        validation_pred = model.grasp_net(validation_images, is_training=False)
+        with slim.arg_scope(model.alexnet_v2_arg_scope()):
+            validation_pred = model.grasp_net(validation_images, is_training=False)
         validation_loss_op = model.custom_loss_function(
             validation_pred, validation_theta_labels, validation_class_labels)
         # Compute number of correctness
@@ -92,11 +95,11 @@ def train():
         tf.summary.scalar('training/loss: ', total_loss)
         summary_op = tf.summary.merge_all()
 
-        # Restore VGG16 pre-trained model
-        variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8'])
-
-        # print(*variables_to_restore, sep='\n')
-        saver = tf.train.Saver(variables_to_restore)
+        # # Restore VGG16 pre-trained model
+        # variables_to_restore = slim.get_variables_to_restore(exclude=['vgg_16/fc6', 'vgg_16/fc7', 'vgg_16/fc8'])
+        #
+        # # print(*variables_to_restore, sep='\n')
+        # saver = tf.train.Saver(variables_to_restore)
 
         def restore_fn(session):
             """A Saver function to later restore the model."""

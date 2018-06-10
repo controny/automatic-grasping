@@ -52,6 +52,17 @@ def vgg_16(images, is_training, num_classes):
             return net
 
 
+def alexnet_v2_arg_scope(weight_decay=0.0005):
+    """Used when calculating predictions."""
+    with slim.arg_scope([slim.conv2d, slim.fully_connected],
+                        activation_fn=tf.nn.relu,
+                        biases_initializer=tf.constant_initializer(0.1),
+                        weights_regularizer=slim.l2_regularizer(weight_decay)):
+        with slim.arg_scope([slim.conv2d], padding='SAME'):
+            with slim.arg_scope([slim.max_pool2d], padding='VALID') as arg_sc:
+                return arg_sc
+
+
 def alexnet_v2(images, is_training, num_classes):
     """
     A net taking advantage of AlexNet V2.
