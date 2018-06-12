@@ -13,7 +13,7 @@ def grasp_net(images, is_training=True, lmbda=0.0):
 
     # Resnet
     with slim.arg_scope(resnet.resnet_arg_scope()):
-        net, _ = resnet.resnet_v2_50(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
+        net, _ = resnet.resnet_v2_200(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
     with tf.variable_scope('extra', reuse=tf.AUTO_REUSE):
         net = slim.fully_connected(net, num_classes, tf.sigmoid)
         net = tf.squeeze(net)

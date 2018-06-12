@@ -4,6 +4,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import model
 import read_TFRecord
+import shutil
 
 flags = tf.flags
 
@@ -16,6 +17,8 @@ flags.DEFINE_integer('batch_size', 50, 'batch size')
 # State the number of epochs to evaluate
 flags.DEFINE_integer('num_epochs', 1, 'number of epochs')
 
+flags.DEFINE_integer('gpu_id', 0, 'the id of gpu to use')
+
 FLAGS = flags.FLAGS
 
 
@@ -27,13 +30,19 @@ def evaluate():
 
         num_steps_per_epoch = int(num_samples / FLAGS.batch_size)
 
-        # Define the loss functions and get the total loss
-        predictions = model.grasp_net(images, is_training=False)
-        loss = model.custom_loss_function(predictions, theta_labels, class_labels)
-        tf.losses.add_loss(loss)
-        total_loss_op = tf.losses.get_total_loss()
-        # Compute number of correctness
-        validation_num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
+        with tf.device('/device:GPU:' + str(FLAGS.gpu_id)):
+            
+            # Define the loss functions and get the total loss
+            predictions = model.grasp_net(images, is_training=False)
+            loss = model.custom_loss_function(predictions, theta_labels, class_labels)
+            tf.losses.add_loss(loss)
+            total_loss_op = tf.losses.get_total_loss()
+            # Compute number of correctness
+            validation_num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
+            accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.batch_size
+
+        tf.summary.scalar('eval/accuracy: ', accuracy_op)
+        summary_op = tf.summary.merge_all()
 
         # Where model logs are stored
         model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
@@ -43,23 +52,30 @@ def evaluate():
         variables_to_restore = slim.get_variables_to_restore()
         saver = tf.train.Saver(variables_to_restore)
 
-        def restore_fn(session):
-            """A Saver function to later restore our model."""
-            return saver.restore(session, checkpoint_file)
+        # Where eval logs are stored
+        eval_log_dir = os.path.join(FLAGS.log_dir, '%s_eval_with_batch_of_%d' % (FLAGS.model_name, FLAGS.batch_size))
+        # Make sure to overwrite the folders
+        if os.path.exists(eval_log_dir):
+            shutil.rmtree(eval_log_dir)
+        os.mkdir(eval_log_dir)
 
         # Define a supervisor for running a managed session
-        sv = tf.train.Supervisor(summary_op=None, init_fn=restore_fn)
+        sv = tf.train.Supervisor(
+            summary_op=None, logdir=eval_log_dir, init_fn=lambda session: saver.restore(session, checkpoint_file))
 
         total_num_correctness = 0
         total_examples = 0
         total_loss = 0
         # Run the managed session
-        with sv.managed_session() as sess:
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with sv.managed_session(config=config) as sess:
             for step in range(num_steps_per_epoch * FLAGS.num_epochs):
-                current_loss, num_correctness = sess.run([total_loss_op, validation_num_correctness_op])
-                accuracy = 1.0 * num_correctness / FLAGS.batch_size
+                current_loss, num_correctness, accuracy, summaries = sess.run(
+                    [total_loss_op, validation_num_correctness_op, accuracy_op, summary_op])
                 print('Step %d: loss = %.4f, accuracy = %.4f (%d / %d)' %
                       (step, current_loss, accuracy, num_correctness, FLAGS.batch_size))
+                sv.summary_computed(sess, summaries, global_step=step)
                 total_num_correctness += num_correctness
                 total_examples += FLAGS.batch_size
                 total_loss += current_loss

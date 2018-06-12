@@ -39,9 +39,11 @@ def train():
 
     with tf.Graph().as_default():
         training_images, training_class_labels, training_theta_labels, num_training_samples =\
-            read_TFRecord.get_batch_data('Train', FLAGS.batch_size, dataset_dir = "/home/shixun7/vrepTFRecord_v2/")
+            read_TFRecord.get_batch_data('Train', FLAGS.batch_size,
+                                         dataset_dir="/home/shixun7/vrepTFRecord_v2/")
         validation_images, validation_class_labels, validation_theta_labels, num_validation_samples = \
-            read_TFRecord.get_batch_data('Validation', FLAGS.validation_batch_size, dataset_dir = "/home/shixun7/vrepTFRecord_v2/")
+            read_TFRecord.get_batch_data('Validation', FLAGS.validation_batch_size,
+                                         dataset_dir="/home/shixun7/vrepTFRecord_v2/")
 
         num_steps_per_epoch = int(num_training_samples / (FLAGS.batch_size/2))
 
