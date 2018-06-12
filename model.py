@@ -6,19 +6,18 @@ import tensorflow.contrib.slim.nets as nets
 resnet = nets.resnet_v2
 
 
-def grasp_net(images, is_training=True, lmbda=0.0):
+def grasp_net(images, is_training=True, lmbda=0.0, base_model='alexnet'):
     num_classes = 18
-    # Alexnet
-    with slim.arg_scope(alexnet_v2_arg_scope(lmbda)):
-        return alexnet_v2(images, is_training, num_classes)
-
-    # Resnet
-    # with slim.arg_scope(resnet.resnet_arg_scope()):
-    #     net, _ = resnet.resnet_v2_200(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
-    # with tf.variable_scope('extra', reuse=tf.AUTO_REUSE):
-    #     net = slim.fully_connected(net, num_classes, tf.sigmoid)
-    #     net = tf.squeeze(net)
-    # return net
+    if base_model == 'alexnet':
+        with slim.arg_scope(alexnet_v2_arg_scope(lmbda)):
+            return alexnet_v2(images, is_training, num_classes)
+    elif base_model == 'resnet':
+        with slim.arg_scope(resnet.resnet_arg_scope()):
+            net, _ = resnet.resnet_v2_200(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
+        with tf.variable_scope('extra', reuse=tf.AUTO_REUSE):
+            net = slim.fully_connected(net, num_classes, tf.sigmoid)
+            net = tf.squeeze(net)
+        return net
 
 
 def vgg_16(images, is_training, num_classes):

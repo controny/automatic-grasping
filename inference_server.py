@@ -15,12 +15,13 @@ flags = tf.flags
 
 flags.DEFINE_string('log_dir', '../log/', 'log directory')
 flags.DEFINE_string('model_name', 'model', 'model name')
+flags.DEFINE_string('base_model', 'alexnet', 'base mode')
 
 FLAGS = flags.FLAGS
 
 # Define input placeholder and output
 x = tf.placeholder(tf.float32, [1, 224, 224, 3])
-prediction = model.grasp_net(x, is_training=False)
+prediction = model.grasp_net(x, is_training=False, base_model=FLAGS.base_model)
 
 # Where model logs are stored
 model_log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)

@@ -17,6 +17,7 @@ flags = tf.flags
 flags.DEFINE_string('log_dir', '../log/', 'log directory')
 flags.DEFINE_string('model_name', 'model', 'model name')
 flags.DEFINE_string('pretrained_model_path', '', 'pretrained mode path')
+flags.DEFINE_string('base_model', 'alexnet', 'base mode')
 
 # Training parameters
 flags.DEFINE_integer('batch_size', 128, 'batch size')
@@ -61,7 +62,7 @@ def train():
         with tf.device('/device:GPU:' + str(FLAGS.gpu_id)):
 
             # Define the loss functions and get the total loss
-            training_pred = model.grasp_net(training_images, lmbda=FLAGS.lmbda)
+            training_pred = model.grasp_net(training_images, lmbda=FLAGS.lmbda, base_model=FLAGS.base_model)
             training_loss = model.custom_loss_function(
                 training_pred, training_theta_labels, training_class_labels)
             tf.losses.add_loss(training_loss)
@@ -71,7 +72,7 @@ def train():
             training_accuracy_op = tf.cast(training_num_correctness_op, tf.float32) / FLAGS.batch_size
 
             # Compute loss for validation
-            validation_pred = model.grasp_net(validation_images, is_training=False)
+            validation_pred = model.grasp_net(validation_images, is_training=False, base_model=FLAGS.base_model)
             validation_loss_op = model.custom_loss_function(
                 validation_pred, validation_theta_labels, validation_class_labels)
             # Compute number of correctness
