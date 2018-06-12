@@ -17,7 +17,7 @@ flags = tf.flags
 flags.DEFINE_string('log_dir', '../log/', 'log directory')
 flags.DEFINE_string('model_name', 'model', 'model name')
 flags.DEFINE_string('pretrained_model_path', '', 'pretrained mode path')
-flags.DEFINE_string('base_model', 'alexnet', 'base mode')
+flags.DEFINE_string('base_model', '', 'base model')
 
 # Training parameters
 flags.DEFINE_integer('batch_size', 128, 'batch size')

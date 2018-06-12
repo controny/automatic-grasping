@@ -6,7 +6,7 @@ import tensorflow.contrib.slim.nets as nets
 resnet = nets.resnet_v2
 
 
-def grasp_net(images, is_training=True, lmbda=0.0, base_model='alexnet'):
+def grasp_net(images, is_training=True, lmbda=0.0, base_model=''):
     num_classes = 18
     if base_model == 'alexnet':
         with slim.arg_scope(alexnet_v2_arg_scope(lmbda)):
@@ -163,8 +163,10 @@ def get_num_correctness(logits, theta_labels, class_labels):
     """
     # Extract outputs of coresponding angles
     angle_outputs = tf.reduce_sum(theta_labels * logits, 1)
+    # angle_outputs = tf.Print(angle_outputs, [angle_outputs], 'predition: ', summarize=10)
     # Convert class labels to 1-D array
     class_labels = tf.cast(tf.squeeze(class_labels), tf.int32)
+    # class_labels = tf.Print(class_labels, [class_labels], 'label: ', summarize=10)
     # Get positive and negative indexes of labels
     # Remember to cast bool to int for later computing
     p_label_indexes = tf.cast(tf.equal(class_labels, tf.ones(class_labels.shape, dtype=tf.int32)), tf.int32)

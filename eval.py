@@ -11,7 +11,7 @@ flags = tf.flags
 flags.DEFINE_string('log_dir', '../log/', 'log directory')
 flags.DEFINE_string('model_name', 'model', 'model name')
 flags.DEFINE_string('class_label', '', 'positive or negative class label')
-flags.DEFINE_string('base_model', 'alexnet', 'base mode')
+flags.DEFINE_string('base_model', '', 'base model')
 
 # State the batch_size to evaluate each time, which can be a lot more than the training batch
 flags.DEFINE_integer('batch_size', 50, 'batch size')
@@ -43,9 +43,9 @@ def evaluate():
             loss = model.custom_loss_function(predictions, theta_labels, class_labels)
             tf.losses.add_loss(loss)
             total_loss_op = tf.losses.get_total_loss()
-            # Compute number of correctness
-            validation_num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
-            accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.batch_size
+        # Compute number of correctness
+        validation_num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
+        accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.batch_size
 
         tf.summary.scalar('eval/accuracy: ', accuracy_op)
         summary_op = tf.summary.merge_all()
