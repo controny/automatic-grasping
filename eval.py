@@ -10,6 +10,7 @@ flags = tf.flags
 
 flags.DEFINE_string('log_dir', '../log/', 'log directory')
 flags.DEFINE_string('model_name', 'model', 'model name')
+flags.DEFINE_string('class_label', '', 'positive or negative class label')
 
 # State the batch_size to evaluate each time, which can be a lot more than the training batch
 flags.DEFINE_integer('batch_size', 50, 'batch size')
@@ -26,12 +27,16 @@ def evaluate():
     """Main evaluating function to set out training."""
 
     with tf.Graph().as_default():
-        images, class_labels, theta_labels, num_samples = read_TFRecord.get_batch_data('Test', FLAGS.batch_size)
+        if FLAGS.class_label == '':
+            images, class_labels, theta_labels, num_samples = read_TFRecord.get_batch_data('Test', FLAGS.batch_size)
+        else:
+            images, class_labels, theta_labels, num_samples = read_TFRecord.get_one_class_batch_data(
+                'Test', FLAGS.class_label, FLAGS.batch_size)
 
         num_steps_per_epoch = int(num_samples / FLAGS.batch_size)
 
         with tf.device('/device:GPU:' + str(FLAGS.gpu_id)):
-            
+
             # Define the loss functions and get the total loss
             predictions = model.grasp_net(images, is_training=False)
             loss = model.custom_loss_function(predictions, theta_labels, class_labels)
@@ -53,7 +58,8 @@ def evaluate():
         saver = tf.train.Saver(variables_to_restore)
 
         # Where eval logs are stored
-        eval_log_dir = os.path.join(FLAGS.log_dir, '%s_eval_with_batch_of_%d' % (FLAGS.model_name, FLAGS.batch_size))
+        eval_log_dir = os.path.join(
+            FLAGS.log_dir, '%s_eval_%s_with_batch_of_%d' % (FLAGS.model_name, FLAGS.class_label, FLAGS.batch_size))
         # Make sure to overwrite the folders
         if os.path.exists(eval_log_dir):
             shutil.rmtree(eval_log_dir)
