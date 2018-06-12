@@ -135,9 +135,9 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
 
 def  get_one_class_batch_data(datasetName = "Train", classLable = "positive", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
     """
-    get a batch of data from only a set(positive/negative)
+    get a batch of data from only a class(positive/negative)
     :param datasetName: Train，Validation or Test
-    :param set: positive or negative
+    :param classLable: positive or negative
     :param batch_size: number of images in this batch
     :param dataset_dir: the dir of TFRecord dtaset
     :return:  images, class_labels, theta_labels, num_samples
