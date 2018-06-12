@@ -70,14 +70,15 @@ def load_batch(dataset,
 
     return images, class_labels, theta_labels
 
-def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
+def get_batch_data(datasetName = "Train", balanced = True, batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
     """
     get a batch of data from both label class(positive/negative)
     :param datasetName: Train，Validation or Test
-    :param set: positive or negative
+    :param balanced: half from positive, another half from negative 
     :param batch_size: number of images in this batch
     :param dataset_dir: the dir of TFRecord dataset
     :return: images, class_labels, theta_labels, Train_n_num_samples
+    if not balanced, num_samples is returned
     notice that returned value is Train_n_num_samples, negative set numbers, not doubled!
     """
     num_readers = 2
@@ -86,13 +87,13 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
     num_epochs = None
     theta_label_size = 18
     class_label_size = 1
-    if datasetName == "Train":
-        dataset_p, Train_p_num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Train_positive')
-        dataset_n,Train_n_num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Train_negative')
+
+    if balanced == True:
+        dataset_p, Train_p_num_samples = get_dataset(dataset_dir = dataset_dir, set = datasetName + '_positive')
+        dataset_n,Train_n_num_samples = get_dataset(dataset_dir = dataset_dir, set = datasetName + '_negative')
 
         images_p, class_labels_p, theta_labels_p = load_batch(dataset = dataset_p, 
                                                               image_size = image_size,
-                                                              #num_epochs = Train_p_num_samples, 
                                                               num_epochs = num_epochs,
                                                               batch_size = int(batch_size / 2),
                                                               num_readers = num_readers,
@@ -100,7 +101,6 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
                                                               shuffle = shuffle)
         images_n, class_labels_n, theta_labels_n = load_batch(dataset = dataset_n, 
                                                               image_size = image_size,
-                                                              #num_epochs = Train_p_num_samples,
                                                               num_epochs = num_epochs,
                                                               batch_size = int(batch_size / 2),
                                                               num_readers = num_readers,
@@ -115,23 +115,20 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
         theta_labels = tf.one_hot(theta_labels, theta_label_size)
         return images, class_labels, theta_labels, Train_n_num_samples
     
-    if datasetName == "Validation":
-        dataset, num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Validation')
-    if datasetName == "Test":
-        dataset, num_samples = get_dataset(dataset_dir = dataset_dir, set = 'Test')
+    if balanced == False:
+        dataset, num_samples = get_dataset(dataset_dir = dataset_dir, set = datasetName)
 
-    images, class_labels, theta_labels = load_batch(dataset = dataset, 
-                                                    image_size = image_size,
-                                                    #num_epochs = num_samples, 
-                                                    num_epochs = num_epochs,
-                                                    batch_size = batch_size,
-                                                    num_readers = num_readers,
-                                                    num_threads = num_preprocessing_threads,
-                                                    shuffle = shuffle)
-    # change shape
-    class_labels = tf.reshape(class_labels, [-1, class_label_size])
-    theta_labels = tf.one_hot(theta_labels, theta_label_size)
-    return images, class_labels, theta_labels, num_samples
+        images, class_labels, theta_labels = load_batch(dataset = dataset, 
+                                                        image_size = image_size, 
+                                                        num_epochs = num_epochs,
+                                                        batch_size = batch_size,
+                                                        num_readers = num_readers,
+                                                        num_threads = num_preprocessing_threads,
+                                                        shuffle = shuffle)
+        # change shape
+        class_labels = tf.reshape(class_labels, [-1, class_label_size])
+        theta_labels = tf.one_hot(theta_labels, theta_label_size)
+        return images, class_labels, theta_labels, num_samples
 
 def  get_one_class_batch_data(datasetName = "Train", classLable = "positive", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
     """
