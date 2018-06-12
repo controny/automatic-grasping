@@ -11,13 +11,20 @@ def grasp_net(images, is_training=True, lmbda=0.0, base_model='alexnet'):
     if base_model == 'alexnet':
         with slim.arg_scope(alexnet_v2_arg_scope(lmbda)):
             return alexnet_v2(images, is_training, num_classes)
-    elif base_model == 'resnet':
+    elif base_model.startswith('resnet'):
         with slim.arg_scope(resnet.resnet_arg_scope()):
-            net, _ = resnet.resnet_v2_200(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
+            if base_model == 'resnet200':
+                net, _ = resnet.resnet_v2_200(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
+            elif base_model == 'resnet50':
+                net, _ = resnet.resnet_v2_50(images, num_classes=1024, is_training=is_training, reuse=tf.AUTO_REUSE)
+            else:
+                raise ValueError('Unexpected base model')
         with tf.variable_scope('extra', reuse=tf.AUTO_REUSE):
             net = slim.fully_connected(net, num_classes, tf.sigmoid)
             net = tf.squeeze(net)
         return net
+    else:
+        raise ValueError('Unexpected base model')
 
 
 def vgg_16(images, is_training, num_classes):
