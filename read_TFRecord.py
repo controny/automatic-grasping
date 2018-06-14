@@ -130,7 +130,7 @@ def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, da
         theta_labels = tf.one_hot(theta_labels, theta_label_size)
         return images, class_labels, theta_labels, num_samples
 
-def  get_one_class_batch_data(datasetName = "Train", classLable = "positive", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
+def  get_one_class_batch_data(datasetName = "Train", classLable = "positive", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/vrepTFRecord_v2/"):
     """
     get a batch of data from only a class(positive/negative)
     :param datasetName: Train，Validation or Test

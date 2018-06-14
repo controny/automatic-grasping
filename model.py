@@ -152,14 +152,14 @@ def custom_loss_function(logits, theta_labels, class_labels):
     return loss
 
 
-def get_num_correctness(logits, theta_labels, class_labels):
+def get_metrics(logits, theta_labels, class_labels):
     """
     Function to calculate accuracy.
 
     :param logits: should be shape of [batch_size, 18]
     :param theta_labels: each denoted by an one-hot vector
     :param class_labels: each denoted by 0 or 1
-    :return: number of correctness
+    :return: accuray, precision and recall
     """
     # Extract outputs of coresponding angles
     angle_outputs = tf.reduce_sum(theta_labels * logits, 1)
@@ -178,5 +178,14 @@ def get_num_correctness(logits, theta_labels, class_labels):
     # Finally, we can calculate numbers of true positive and true negative
     num_true_p = tf.reduce_sum(p_label_indexes * p_logits_indexes)
     num_true_n = tf.reduce_sum(n_label_indexes * n_logits_indexes)
+    # Compute number of false positive and false negative
+    num_positive_labels = tf.reduce_sum(p_label_indexes)
+    num_negative_labels = tf.reduce_sum(n_label_indexes)
+    num_false_p = num_positive_labels - num_true_p
+    num_false_n = num_negative_labels - num_true_n
+    # Compute accuracy, precision and recall
+    accuracy = (num_true_p + num_true_n) / (num_positive_labels + num_negative_labels)
+    precison = num_true_p / (num_true_p + num_false_p)
+    recall = num_true_p / (num_true_p + num_false_n)
 
-    return num_true_p + num_true_n
+    return accuracy, precison, recall

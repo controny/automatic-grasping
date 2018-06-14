@@ -44,9 +44,10 @@ def upload_file():
     image = np.expand_dims(np.asarray(image), 0)
 
     result = prediction.eval(feed_dict={x: image})
+    print('result', result)
     result = np.argmax(result)
 
-    return result
+    return str(result * 10)
 
 
 app.run(host='0.0.0.0', port=8080)

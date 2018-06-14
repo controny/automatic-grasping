@@ -67,18 +67,16 @@ def train():
                 training_pred, training_theta_labels, training_class_labels)
             tf.losses.add_loss(training_loss)
             total_loss = tf.losses.get_total_loss()
-            training_num_correctness_op = model.get_num_correctness(
+            training_accuracy_op, training_precision_op, training_recall_op = model.get_metrics(
                 training_pred, training_theta_labels, training_class_labels)
-            training_accuracy_op = tf.cast(training_num_correctness_op, tf.float32) / FLAGS.batch_size
 
             # Compute loss for validation
             validation_pred = model.grasp_net(validation_images, is_training=False, base_model=FLAGS.base_model)
             validation_loss_op = model.custom_loss_function(
                 validation_pred, validation_theta_labels, validation_class_labels)
             # Compute number of correctness
-            validation_num_correctness_op = model.get_num_correctness(
+            validation_accuracy_op, validation_precision_op, validation_recall_op = model.get_metrics(
                 validation_pred, validation_theta_labels, validation_class_labels)
-            accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.validation_batch_size
 
             # Set optimizer
             optimizer = tf.train.GradientDescentOptimizer(learning_rate)
@@ -91,9 +89,13 @@ def train():
         tf.summary.scalar('learning_rate', learning_rate)
         tf.summary.image('validation/images', validation_images, max_outputs=FLAGS.validation_batch_size)
         tf.summary.scalar('validation/loss: ', validation_loss_op)
-        tf.summary.scalar('validation/accuracy: ', accuracy_op)
+        tf.summary.scalar('validation/accuracy: ', validation_accuracy_op)
+        tf.summary.scalar('validation/precision: ', validation_precision_op)
+        tf.summary.scalar('validation/recall: ', validation_recall_op)
         tf.summary.scalar('training/loss: ', total_loss)
         tf.summary.scalar('training/accuracy: ', training_accuracy_op)
+        tf.summary.scalar('training/precision: ', training_precision_op)
+        tf.summary.scalar('training/recall: ', training_recall_op)
         summary_op = tf.summary.merge_all()
 
         # Where model logs are stored
@@ -140,7 +142,7 @@ def train():
                     print('global step %s: training loss = %.4f, training accuracy = %.4f' %
                           (global_step_count, training_loss, training_accuracy))
 
-                    loss, accuracy, summaries = sess.run([validation_loss_op, accuracy_op, summary_op])
+                    loss, accuracy, summaries = sess.run([validation_loss_op, validation_accuracy_op, summary_op])
                     print('global step %s: validation loss = %.4f, validation accuracy = %.4f' %
                           (global_step_count, loss, accuracy))
                     sv.summary_computed(sess, summaries)

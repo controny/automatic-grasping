@@ -44,10 +44,11 @@ def evaluate():
             tf.losses.add_loss(loss)
             total_loss_op = tf.losses.get_total_loss()
         # Compute number of correctness
-        validation_num_correctness_op = model.get_num_correctness(predictions, theta_labels, class_labels)
-        accuracy_op = tf.cast(validation_num_correctness_op, tf.float32) / FLAGS.batch_size
+        accuracy_op, precision_op, recall_op = model.get_metrics(predictions, theta_labels, class_labels)
 
         tf.summary.scalar('eval/accuracy: ', accuracy_op)
+        tf.summary.scalar('eval/precision: ', precision_op)
+        tf.summary.scalar('eval/recall: ', recall_op)
         summary_op = tf.summary.merge_all()
 
         # Where model logs are stored
@@ -78,8 +79,9 @@ def evaluate():
         config.gpu_options.allow_growth = True
         with sv.managed_session(config=config) as sess:
             for step in range(num_steps_per_epoch * FLAGS.num_epochs):
-                current_loss, num_correctness, accuracy, summaries = sess.run(
-                    [total_loss_op, validation_num_correctness_op, accuracy_op, summary_op])
+                current_loss, accuracy, summaries = sess.run(
+                    [total_loss_op, accuracy_op, summary_op])
+                num_correctness = int(accuracy * FLAGS.batch_size)
                 print('Step %d: loss = %.4f, accuracy = %.4f (%d / %d)' %
                       (step, current_loss, accuracy, num_correctness, FLAGS.batch_size))
                 sv.summary_computed(sess, summaries, global_step=step)
