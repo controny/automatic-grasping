@@ -70,7 +70,7 @@ def load_batch(dataset,
 
     return images, class_labels, theta_labels
 
-def get_batch_data(datasetName = "Train", balanced = True, batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/TFRecord/"):
+def get_batch_data(datasetName = "Train", batch_size = 128, image_size = 224, dataset_dir = "/home/shixun7/vrepTFRecord_v2/", balanced = True):
     """
     get a batch of data from both label class(positive/negative)
     :param datasetName: Train，Validation or Test
