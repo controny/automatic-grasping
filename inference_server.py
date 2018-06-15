@@ -41,7 +41,9 @@ saver.restore(sess, checkpoint_file)
 def upload_file():
     image = request.files['image']
     image = Image.open(image)
-    image = np.expand_dims(np.asarray(image), 0)
+    image = np.expand_dims(np.array(image).astype(np.float), 0)
+    # Preprocess image
+    image -= [123.68, 116.779, 103.939]
 
     result = prediction.eval(feed_dict={x: image})
     print('result', result)
