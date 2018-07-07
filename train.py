@@ -20,13 +20,13 @@ flags.DEFINE_string('pretrained_model_path', '', 'pretrained mode path')
 flags.DEFINE_string('base_model', '', 'base model')
 
 # Training parameters
-flags.DEFINE_integer('batch_size', 128, 'batch size')
+flags.DEFINE_integer('batch_size', 32, 'batch size')
 flags.DEFINE_integer('validation_batch_size', 100, 'batch size for validation')
 flags.DEFINE_integer('num_epochs', 1, 'number of epochs')
-flags.DEFINE_integer('max_steps', 20000, 'number of max training steps')
+flags.DEFINE_integer('max_steps', 3000, 'number of max training steps')
 flags.DEFINE_integer('logging_gap', 50, 'logging gap')
-flags.DEFINE_integer('decay_steps', 5000, 'number of steps before decay')
-flags.DEFINE_float('learning_rate', 0.01, 'initial learning rate')
+flags.DEFINE_integer('decay_steps', 500, 'number of steps before decay')
+flags.DEFINE_float('learning_rate', 0.0001, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay_factor', 0.95, 'learning rate decay factor')
 flags.DEFINE_float('lmbda', 0.0005, 'lambda parameter for regularization')
 
