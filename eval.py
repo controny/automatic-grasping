@@ -79,11 +79,11 @@ def evaluate():
         config.gpu_options.allow_growth = True
         with sv.managed_session(config=config) as sess:
             for step in range(num_steps_per_epoch * FLAGS.num_epochs):
-                current_loss, accuracy, summaries = sess.run(
-                    [total_loss_op, accuracy_op, summary_op])
+                current_loss, accuracy, precision, recall, summaries = sess.run(
+                    [total_loss_op, accuracy_op, precision_op, recall_op, summary_op])
                 num_correctness = int(accuracy * FLAGS.batch_size)
-                print('Step %d: loss = %.4f, accuracy = %.4f (%d / %d)' %
-                      (step, current_loss, accuracy, num_correctness, FLAGS.batch_size))
+                print('Step %d: loss = %.4f, accuracy = %.4f, precision = %.4f, recall = %.4f' %
+                      (step, current_loss, accuracy, precision, recall))
                 sv.summary_computed(sess, summaries, global_step=step)
                 total_num_correctness += num_correctness
                 total_examples += FLAGS.batch_size

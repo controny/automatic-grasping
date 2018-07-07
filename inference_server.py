@@ -3,11 +3,9 @@ import model
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from flask import Flask, request
-from werkzeug.utils import secure_filename
 import os
 import PIL.Image as Image
 import numpy as np
-from io import BytesIO
 
 app = Flask(__name__)
 
@@ -40,7 +38,7 @@ saver.restore(sess, checkpoint_file)
 @app.route('/inference', methods=['POST'])
 def upload_file():
     image = request.files['image']
-    image = Image.open(image)
+    image = Image.open(image).resize([224, 224], Image.BILINEAR)
     image = np.expand_dims(np.array(image).astype(np.float), 0)
     # Preprocess image
     image -= [123.68, 116.779, 103.939]

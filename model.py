@@ -144,7 +144,7 @@ def custom_loss_function(logits, theta_labels, class_labels):
     filtered_scores = tf.reduce_sum(logits*theta_labels, 1)
     # Reshape the scores, such that it shares the shape with labels
     filtered_scores = tf.reshape(filtered_scores, [-1, 1])
-    clipped_scores = tf.clip_by_value(filtered_scores, 10e-8, 1.0-10e-8)
+    clipped_scores = tf.clip_by_value(filtered_scores, 1e-5, 1.0-1e-5)
     entropys = - class_labels * tf.log(clipped_scores)\
                - (1-class_labels) * tf.log(1-clipped_scores)
     loss = tf.reduce_mean(entropys)
@@ -163,7 +163,7 @@ def get_metrics(logits, theta_labels, class_labels):
     """
     # Extract outputs of coresponding angles
     angle_outputs = tf.reduce_sum(theta_labels * logits, 1)
-    # angle_outputs = tf.Print(angle_outputs, [angle_outputs], 'predition: ', summarize=10)
+    # angle_outputs = tf.Print(angle_outputs, [angle_outputs], 'prediction: ', summarize=10)
     # Convert class labels to 1-D array
     class_labels = tf.cast(tf.squeeze(class_labels), tf.int32)
     # class_labels = tf.Print(class_labels, [class_labels], 'label: ', summarize=10)
@@ -181,10 +181,14 @@ def get_metrics(logits, theta_labels, class_labels):
     # Compute number of false positive and false negative
     num_positive_labels = tf.reduce_sum(p_label_indexes)
     num_negative_labels = tf.reduce_sum(n_label_indexes)
-    num_false_p = num_positive_labels - num_true_p
-    num_false_n = num_negative_labels - num_true_n
+    num_false_p = num_positive_labels - num_true_n
+    num_false_n = num_negative_labels - num_true_p
+    # num_true_p = tf.Print(num_true_p, [num_true_p], 'num true p')
+    # num_true_n = tf.Print(num_true_n, [num_true_n], 'num true n')
+    # num_false_p = tf.Print(num_false_p, [num_false_p], 'num false p')
+    # num_false_n = tf.Print(num_false_n, [num_false_n], 'num false n')
     # Compute accuracy, precision and recall
-    accuracy = (num_true_p + num_true_n) / (num_positive_labels + num_negative_labels)
+    accuracy = (num_true_p + num_true_n) / (num_true_n + num_true_p + num_false_n + num_false_p)
     precison = num_true_p / (num_true_p + num_false_p)
     recall = num_true_p / (num_true_p + num_false_n)
 

@@ -142,9 +142,11 @@ def train():
                     print('global step %s: training loss = %.4f, training accuracy = %.4f' %
                           (global_step_count, training_loss, training_accuracy))
 
-                    loss, accuracy, summaries = sess.run([validation_loss_op, validation_accuracy_op, summary_op])
-                    print('global step %s: validation loss = %.4f, validation accuracy = %.4f' %
-                          (global_step_count, loss, accuracy))
+                    loss, accuracy, precision, recall, summaries =\
+                        sess.run([validation_loss_op,
+                                  validation_accuracy_op, validation_precision_op, validation_recall_op, summary_op])
+                    print('global step %s: validation loss = %.4f, accuracy = %.4f, precision = %.4f, recall = %.4f' %
+                          (global_step_count, loss, accuracy, precision, recall))
                     sv.summary_computed(sess, summaries)
 
 
